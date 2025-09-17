@@ -12,6 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { PackagePicker } from "@/components/package-picker";
 import { ArrowLeft } from "lucide-react";
 import { analytics } from "@/lib/analytics";
 
@@ -22,29 +23,30 @@ const singleLineItems = [
     description: "Suspended ceiling with modern lighting integration",
   },
   {
-    key: "ceilingPainting" as const,
-    title: "Ceiling Painting",
-    description: "Professional ceiling painting with premium paints",
+    key: "painting" as const,
+    title: "Painting (sqft)",
+    description: "Professional painting with premium paints",
   },
   {
     key: "electricalWiring" as const,
     title: "Electrical & Wiring",
     description: "Complete electrical work and wiring upgrades",
   },
-];
+] as const;
 
 export function StepSingleLine() {
-  const { single, setSingleLine, setCurrentStep, basics } = useEstimatorStore();
+  const {
+    single,
+    basics,
+    toggleSingleLineItem,
+    setSingleLine,
+    setSingleLinePackageOverride,
+    setCurrentStep,
+  } = useEstimatorStore();
 
   const handleToggle = (key: keyof typeof single, enabled: boolean) => {
-    setSingleLine({
-      [key]: {
-        enabled,
-        areaSqft: enabled
-          ? single[key].areaSqft || basics.carpetAreaSqft
-          : undefined,
-      },
-    });
+    toggleSingleLineItem(key, enabled);
+    analytics.track("item_toggled", { itemId: `single_${key}`, enabled });
   };
 
   const handleAreaChange = (key: keyof typeof single, areaSqft: number) => {
@@ -84,7 +86,7 @@ export function StepSingleLine() {
                   <div className="flex-1">
                     <div className="flex items-center space-x-3 mb-2">
                       <Switch
-                        checked={single[item.key].enabled}
+                        checked={single[item.key]?.enabled || false}
                         onCheckedChange={(enabled) =>
                           handleToggle(item.key, enabled)
                         }
@@ -99,19 +101,30 @@ export function StepSingleLine() {
                     </p>
                   </div>
 
-                  {single[item.key].enabled && (
-                    <div className="ml-4 w-32">
-                      <Label className="text-xs text-gray-500">
-                        Area (sq ft)
-                      </Label>
-                      <Input
-                        type="number"
-                        value={single[item.key].areaSqft || ""}
-                        onChange={(e) =>
-                          handleAreaChange(item.key, Number(e.target.value))
+                  {single[item.key]?.enabled && (
+                    <div className="flex items-center gap-4">
+                      <div className="w-32">
+                        <Label className="text-xs text-gray-500">
+                          Area (sq ft)
+                        </Label>
+                        <Input
+                          type="number"
+                          value={single[item.key]?.areaSqft || ""}
+                          onChange={(e) =>
+                            handleAreaChange(item.key, Number(e.target.value))
+                          }
+                          className="bg-white border-gray-300 text-black text-sm"
+                          placeholder="Area"
+                        />
+                      </div>
+                      <PackagePicker
+                        value={single[item.key]?.pkgOverride || null}
+                        globalPkg={basics.pkg}
+                        onChange={(pkg) =>
+                          setSingleLinePackageOverride(item.key, pkg)
                         }
-                        className="bg-white border-gray-300 text-black text-sm"
-                        placeholder="Area"
+                        itemId={`single_${item.key}`}
+                        compact
                       />
                     </div>
                   )}
@@ -134,7 +147,7 @@ export function StepSingleLine() {
             onClick={handleNext}
             className="bg-primary hover:bg-primary/90 text-primary-foreground px-8"
           >
-            Next: Rooms
+            Next
           </Button>
         </div>
       </CardContent>

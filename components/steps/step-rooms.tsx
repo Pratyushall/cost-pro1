@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PackagePicker } from "@/components/package-picker";
 import { ArrowLeft } from "lucide-react";
 import type {
   BedroomSize,
@@ -23,12 +24,10 @@ import type {
 } from "@/lib/types";
 
 export function StepRooms() {
-  const { rooms, setRooms, setCurrentStep } = useEstimatorStore();
+  const { rooms, updateRooms, setCurrentStep, basics } = useEstimatorStore();
 
   const updateRoom = (roomType: keyof typeof rooms, updates: any) => {
-    setRooms({
-      [roomType]: { ...rooms[roomType], ...updates },
-    });
+    updateRooms(roomType, updates);
   };
 
   return (
@@ -69,28 +68,71 @@ export function StepRooms() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="space-y-3">
               {[
                 { key: "wardrobe", label: "Wardrobe" },
                 { key: "studyTable", label: "Study Table" },
                 { key: "tvUnit", label: "TV Unit" },
                 { key: "bedBackPanel", label: "Bed Back Panel" },
-              ].map((item) => (
-                <div key={item.key} className="flex items-center space-x-2">
-                  <Switch
-                    checked={
-                      rooms.master[
-                        item.key as keyof typeof rooms.master
-                      ] as boolean
-                    }
-                    onCheckedChange={(checked) =>
-                      updateRoom("master", { [item.key]: checked })
-                    }
-                    className="toggle-switch"
-                  />
-                  <Label className="text-black text-sm">{item.label}</Label>
-                </div>
-              ))}
+              ].map((item) => {
+                const itemData =
+                  rooms.master[item.key as keyof typeof rooms.master];
+                const isEnabled =
+                  typeof itemData === "object" && "enabled" in itemData
+                    ? itemData.enabled
+                    : false;
+
+                return (
+                  <div
+                    key={item.key}
+                    className="border rounded-lg p-4 space-y-3"
+                  >
+                    {/* Toggle first - prominent display */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <Switch
+                          checked={isEnabled}
+                          onCheckedChange={(checked) =>
+                            updateRoom("master", {
+                              [item.key]: { enabled: checked },
+                            })
+                          }
+                          className="toggle-switch"
+                        />
+                        <Label className="text-black font-medium">
+                          {item.label}
+                        </Label>
+                      </div>
+                    </div>
+
+                    {/* Package picker only shows when enabled */}
+                    {isEnabled && (
+                      <div className="pl-8">
+                        <PackagePicker
+                          globalPkg={basics.pkg}
+                          currentPackage={
+                            typeof itemData === "object" &&
+                            "pkgOverride" in itemData
+                              ? itemData.pkgOverride
+                              : null
+                          }
+                          onPackageChange={(pkg) =>
+                            updateRoom("master", {
+                              [item.key]: {
+                                ...(typeof itemData === "object"
+                                  ? itemData
+                                  : { enabled: true }),
+                                pkgOverride: pkg,
+                              },
+                            })
+                          }
+                          itemName={item.label}
+                        />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </CardContent>
         </Card>
@@ -125,27 +167,68 @@ export function StepRooms() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <div className="space-y-3">
               {[
                 { key: "wardrobe", label: "Wardrobe" },
                 { key: "studyTable", label: "Study Table" },
                 { key: "bedBackPanel", label: "Bed Back Panel" },
-              ].map((item) => (
-                <div key={item.key} className="flex items-center space-x-2">
-                  <Switch
-                    checked={
-                      rooms.children[
-                        item.key as keyof typeof rooms.children
-                      ] as boolean
-                    }
-                    onCheckedChange={(checked) =>
-                      updateRoom("children", { [item.key]: checked })
-                    }
-                    className="toggle-switch"
-                  />
-                  <Label className="text-black text-sm">{item.label}</Label>
-                </div>
-              ))}
+              ].map((item) => {
+                const itemData =
+                  rooms.children[item.key as keyof typeof rooms.children];
+                const isEnabled =
+                  typeof itemData === "object" && "enabled" in itemData
+                    ? itemData.enabled
+                    : false;
+
+                return (
+                  <div
+                    key={item.key}
+                    className="border rounded-lg p-4 space-y-3"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <Switch
+                          checked={isEnabled}
+                          onCheckedChange={(checked) =>
+                            updateRoom("children", {
+                              [item.key]: { enabled: checked },
+                            })
+                          }
+                          className="toggle-switch"
+                        />
+                        <Label className="text-black font-medium">
+                          {item.label}
+                        </Label>
+                      </div>
+                    </div>
+
+                    {isEnabled && (
+                      <div className="pl-8">
+                        <PackagePicker
+                          globalPkg={basics.pkg}
+                          currentPackage={
+                            typeof itemData === "object" &&
+                            "pkgOverride" in itemData
+                              ? itemData.pkgOverride
+                              : null
+                          }
+                          onPackageChange={(pkg) =>
+                            updateRoom("children", {
+                              [item.key]: {
+                                ...(typeof itemData === "object"
+                                  ? itemData
+                                  : { enabled: true }),
+                                pkgOverride: pkg,
+                              },
+                            })
+                          }
+                          itemName={item.label}
+                        />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </CardContent>
         </Card>
@@ -178,27 +261,68 @@ export function StepRooms() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <div className="space-y-3">
               {[
                 { key: "wardrobe", label: "Wardrobe" },
                 { key: "studyTable", label: "Study Table" },
                 { key: "bedBackPanel", label: "Bed Back Panel" },
-              ].map((item) => (
-                <div key={item.key} className="flex items-center space-x-2">
-                  <Switch
-                    checked={
-                      rooms.guest[
-                        item.key as keyof typeof rooms.guest
-                      ] as boolean
-                    }
-                    onCheckedChange={(checked) =>
-                      updateRoom("guest", { [item.key]: checked })
-                    }
-                    className="toggle-switch"
-                  />
-                  <Label className="text-black text-sm">{item.label}</Label>
-                </div>
-              ))}
+              ].map((item) => {
+                const itemData =
+                  rooms.guest[item.key as keyof typeof rooms.guest];
+                const isEnabled =
+                  typeof itemData === "object" && "enabled" in itemData
+                    ? itemData.enabled
+                    : false;
+
+                return (
+                  <div
+                    key={item.key}
+                    className="border rounded-lg p-4 space-y-3"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <Switch
+                          checked={isEnabled}
+                          onCheckedChange={(checked) =>
+                            updateRoom("guest", {
+                              [item.key]: { enabled: checked },
+                            })
+                          }
+                          className="toggle-switch"
+                        />
+                        <Label className="text-black font-medium">
+                          {item.label}
+                        </Label>
+                      </div>
+                    </div>
+
+                    {isEnabled && (
+                      <div className="pl-8">
+                        <PackagePicker
+                          globalPkg={basics.pkg}
+                          currentPackage={
+                            typeof itemData === "object" &&
+                            "pkgOverride" in itemData
+                              ? itemData.pkgOverride
+                              : null
+                          }
+                          onPackageChange={(pkg) =>
+                            updateRoom("guest", {
+                              [item.key]: {
+                                ...(typeof itemData === "object"
+                                  ? itemData
+                                  : { enabled: true }),
+                                pkgOverride: pkg,
+                              },
+                            })
+                          }
+                          itemName={item.label}
+                        />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </CardContent>
         </Card>
@@ -229,33 +353,108 @@ export function StepRooms() {
                   </SelectContent>
                 </Select>
               </div>
-              <div>
-                <Label className="text-black font-medium">
-                  TV Panel Area (sq ft)
-                </Label>
-                <Input
-                  type="number"
-                  value={rooms.living.tvPanelSqft || ""}
-                  onChange={(e) =>
-                    updateRoom("living", {
-                      tvPanelSqft: Number(e.target.value),
-                    })
-                  }
-                  className="bg-white border-gray-300"
-                  placeholder="60"
-                />
-              </div>
             </div>
 
-            <div className="flex items-center space-x-2">
-              <Switch
-                checked={rooms.living.tvDrawerUnit}
-                onCheckedChange={(checked) =>
-                  updateRoom("living", { tvDrawerUnit: checked })
-                }
-                className="toggle-switch"
-              />
-              <Label className="text-black">TV Drawer Unit</Label>
+            <div className="space-y-3">
+              {/* TV Drawer Unit */}
+              <div className="border rounded-lg p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <Switch
+                      checked={rooms.living.tvDrawerUnit?.enabled || false}
+                      onCheckedChange={(checked) =>
+                        updateRoom("living", {
+                          tvDrawerUnit: { enabled: checked },
+                        })
+                      }
+                      className="toggle-switch"
+                    />
+                    <Label className="text-black font-medium">
+                      TV Drawer Unit
+                    </Label>
+                  </div>
+                </div>
+
+                {rooms.living.tvDrawerUnit?.enabled && (
+                  <div className="pl-8">
+                    <PackagePicker
+                      globalPkg={basics.pkg}
+                      currentPackage={
+                        rooms.living.tvDrawerUnit?.pkgOverride || null
+                      }
+                      onPackageChange={(pkg) =>
+                        updateRoom("living", {
+                          tvDrawerUnit: {
+                            ...rooms.living.tvDrawerUnit,
+                            pkgOverride: pkg,
+                          },
+                        })
+                      }
+                      itemName="TV Drawer Unit"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* TV Unit Panelling */}
+              <div className="border rounded-lg p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <Switch
+                      checked={rooms.living.tvPanel?.enabled || false}
+                      onCheckedChange={(checked) =>
+                        updateRoom("living", {
+                          tvPanel: {
+                            ...rooms.living.tvPanel,
+                            enabled: checked,
+                          },
+                        })
+                      }
+                      className="toggle-switch"
+                    />
+                    <Label className="text-black font-medium">
+                      TV Unit Panelling
+                    </Label>
+                  </div>
+                </div>
+
+                {rooms.living.tvPanel?.enabled && (
+                  <div className="pl-8 space-y-3">
+                    <div>
+                      <Label className="text-black text-sm">
+                        Panel Area (sq ft)
+                      </Label>
+                      <Input
+                        type="number"
+                        value={rooms.living.tvPanel?.panelSqft || ""}
+                        onChange={(e) =>
+                          updateRoom("living", {
+                            tvPanel: {
+                              ...rooms.living.tvPanel,
+                              panelSqft: Number(e.target.value),
+                            },
+                          })
+                        }
+                        className="bg-white border-gray-300 mt-1"
+                        placeholder="60"
+                      />
+                    </div>
+                    <PackagePicker
+                      globalPkg={basics.pkg}
+                      currentPackage={rooms.living.tvPanel?.pkgOverride || null}
+                      onPackageChange={(pkg) =>
+                        updateRoom("living", {
+                          tvPanel: {
+                            ...rooms.living.tvPanel,
+                            pkgOverride: pkg,
+                          },
+                        })
+                      }
+                      itemName="TV Panel"
+                    />
+                  </div>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -284,32 +483,67 @@ export function StepRooms() {
                   </SelectContent>
                 </Select>
               </div>
-              <div>
-                <Label className="text-black font-medium">
-                  Number of Doors
-                </Label>
-                <Input
-                  type="number"
-                  value={rooms.pooja.doorsQty || ""}
-                  onChange={(e) =>
-                    updateRoom("pooja", { doorsQty: Number(e.target.value) })
-                  }
-                  className="bg-white border-gray-300"
-                  placeholder="0"
-                  min="0"
-                />
-              </div>
             </div>
 
-            <div className="flex items-center space-x-2">
-              <Switch
-                checked={rooms.pooja.unit}
-                onCheckedChange={(checked) =>
-                  updateRoom("pooja", { unit: checked })
-                }
-                className="toggle-switch"
-              />
-              <Label className="text-black">Pooja Unit</Label>
+            <div className="space-y-3">
+              {/* Doors */}
+              <div className="border rounded-lg p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <Switch
+                      checked={rooms.pooja.doors?.enabled || false}
+                      onCheckedChange={(checked) =>
+                        updateRoom("pooja", {
+                          doors: {
+                            ...rooms.pooja.doors,
+                            enabled: checked,
+                          },
+                        })
+                      }
+                      className="toggle-switch"
+                    />
+                    <Label className="text-black font-medium">Doors</Label>
+                  </div>
+                </div>
+
+                {rooms.pooja.doors?.enabled && (
+                  <div className="pl-8 space-y-3">
+                    <div>
+                      <Label className="text-black text-sm">
+                        Number of Doors
+                      </Label>
+                      <Input
+                        type="number"
+                        value={rooms.pooja.doors?.qty || ""}
+                        onChange={(e) =>
+                          updateRoom("pooja", {
+                            doors: {
+                              ...rooms.pooja.doors,
+                              qty: Number(e.target.value),
+                            },
+                          })
+                        }
+                        className="bg-white border-gray-300 mt-1"
+                        placeholder="0"
+                        min="0"
+                      />
+                    </div>
+                    <PackagePicker
+                      globalPkg={basics.pkg}
+                      currentPackage={rooms.pooja.doors?.pkgOverride || null}
+                      onPackageChange={(pkg) =>
+                        updateRoom("pooja", {
+                          doors: {
+                            ...rooms.pooja.doors,
+                            pkgOverride: pkg,
+                          },
+                        })
+                      }
+                      itemName="Doors"
+                    />
+                  </div>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -336,6 +570,7 @@ export function StepRooms() {
                     <SelectItem value="Parallel">Parallel</SelectItem>
                     <SelectItem value="L-shaped">L-shaped</SelectItem>
                     <SelectItem value="Island">Island</SelectItem>
+                    <SelectItem value="Modular Kitchen">Modular</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -360,26 +595,51 @@ export function StepRooms() {
             </div>
 
             <div className="space-y-3">
-              <div className="flex items-center space-x-2">
-                <Switch
-                  checked={rooms.kitchen.baseUnit}
-                  onCheckedChange={(checked) =>
-                    updateRoom("kitchen", { baseUnit: checked })
-                  }
-                  className="toggle-switch"
-                />
-                <Label className="text-black">Base Unit</Label>
+              <div className="flex items-center justify-between p-3 border rounded-lg">
+                <div className="flex items-center space-x-3">
+                  <Switch
+                    checked={rooms.kitchen.baseUnit?.enabled || false}
+                    onCheckedChange={(checked) =>
+                      updateRoom("kitchen", { baseUnit: { enabled: checked } })
+                    }
+                    className="toggle-switch"
+                  />
+                  <Label className="text-black">Base Unit</Label>
+                </div>
+                {rooms.kitchen.baseUnit?.enabled && (
+                  <div className="pl-8">
+                    <PackagePicker
+                      globalPkg={basics.pkg}
+                      currentPackage={
+                        rooms.kitchen.baseUnit?.pkgOverride || null
+                      }
+                      onPackageChange={(pkg) =>
+                        updateRoom("kitchen", {
+                          baseUnit: {
+                            ...rooms.kitchen.baseUnit,
+                            pkgOverride: pkg,
+                          },
+                        })
+                      }
+                      itemName="Base Unit"
+                    />
+                  </div>
+                )}
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label className="text-black text-sm">Tandem Baskets</Label>
                   <Input
                     type="number"
-                    value={rooms.kitchen.tandemBaskets || ""}
+                    value={rooms.kitchen.tandemBaskets?.qty || ""}
                     onChange={(e) =>
                       updateRoom("kitchen", {
-                        tandemBaskets: Number(e.target.value),
+                        tandemBaskets: {
+                          ...rooms.kitchen.tandemBaskets,
+                          qty: Number(e.target.value),
+                          enabled: Number(e.target.value) > 0,
+                        },
                       })
                     }
                     className="bg-white border-gray-300"
@@ -391,10 +651,14 @@ export function StepRooms() {
                   <Label className="text-black text-sm">Bottle Pullout</Label>
                   <Input
                     type="number"
-                    value={rooms.kitchen.bottlePullout || ""}
+                    value={rooms.kitchen.bottlePullout?.qty || ""}
                     onChange={(e) =>
                       updateRoom("kitchen", {
-                        bottlePullout: Number(e.target.value),
+                        bottlePullout: {
+                          ...rooms.kitchen.bottlePullout,
+                          qty: Number(e.target.value),
+                          enabled: Number(e.target.value) > 0,
+                        },
                       })
                     }
                     className="bg-white border-gray-300"
@@ -404,26 +668,118 @@ export function StepRooms() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    checked={rooms.kitchen.cornerUnit}
-                    onCheckedChange={(checked) =>
-                      updateRoom("kitchen", { cornerUnit: checked })
+              {(rooms.kitchen.tandemBaskets?.qty || 0) > 0 && (
+                <div className="flex items-center justify-between p-3 border rounded-lg">
+                  <Label className="text-black">
+                    Tandem Baskets ({rooms.kitchen.tandemBaskets?.qty || 0})
+                  </Label>
+                  <PackagePicker
+                    globalPkg={basics.pkg}
+                    currentPackage={
+                      rooms.kitchen.tandemBaskets?.pkgOverride || null
                     }
-                    className="toggle-switch"
+                    onPackageChange={(pkg) =>
+                      updateRoom("kitchen", {
+                        tandemBaskets: {
+                          ...rooms.kitchen.tandemBaskets,
+                          pkgOverride: pkg,
+                        },
+                      })
+                    }
+                    itemName="Tandem Baskets"
                   />
-                  <Label className="text-black text-sm">Corner Unit</Label>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    checked={rooms.kitchen.wickerBasket}
-                    onCheckedChange={(checked) =>
-                      updateRoom("kitchen", { wickerBasket: checked })
+              )}
+
+              {(rooms.kitchen.bottlePullout?.qty || 0) > 0 && (
+                <div className="flex items-center justify-between p-3 border rounded-lg">
+                  <Label className="text-black">
+                    Bottle Pullout ({rooms.kitchen.bottlePullout?.qty || 0})
+                  </Label>
+                  <PackagePicker
+                    globalPkg={basics.pkg}
+                    currentPackage={
+                      rooms.kitchen.bottlePullout?.pkgOverride || null
                     }
-                    className="toggle-switch"
+                    onPackageChange={(pkg) =>
+                      updateRoom("kitchen", {
+                        bottlePullout: {
+                          ...rooms.kitchen.bottlePullout,
+                          pkgOverride: pkg,
+                        },
+                      })
+                    }
+                    itemName="Bottle Pullout"
                   />
-                  <Label className="text-black text-sm">Wicker Basket</Label>
+                </div>
+              )}
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-3 border rounded-lg">
+                  <div className="flex items-center space-x-3">
+                    <Switch
+                      checked={rooms.kitchen.cornerUnit?.enabled || false}
+                      onCheckedChange={(checked) =>
+                        updateRoom("kitchen", {
+                          cornerUnit: { enabled: checked },
+                        })
+                      }
+                      className="toggle-switch"
+                    />
+                    <Label className="text-black">Corner Unit</Label>
+                  </div>
+                  {rooms.kitchen.cornerUnit?.enabled && (
+                    <div className="pl-8">
+                      <PackagePicker
+                        globalPkg={basics.pkg}
+                        currentPackage={
+                          rooms.kitchen.cornerUnit?.pkgOverride || null
+                        }
+                        onPackageChange={(pkg) =>
+                          updateRoom("kitchen", {
+                            cornerUnit: {
+                              ...rooms.kitchen.cornerUnit,
+                              pkgOverride: pkg,
+                            },
+                          })
+                        }
+                        itemName="Corner Unit"
+                      />
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center justify-between p-3 border rounded-lg">
+                  <div className="flex items-center space-x-3">
+                    <Switch
+                      checked={rooms.kitchen.wickerBasket?.enabled || false}
+                      onCheckedChange={(checked) =>
+                        updateRoom("kitchen", {
+                          wickerBasket: { enabled: checked },
+                        })
+                      }
+                      className="toggle-switch"
+                    />
+                    <Label className="text-black">Wicker Basket</Label>
+                  </div>
+                  {rooms.kitchen.wickerBasket?.enabled && (
+                    <div className="pl-8">
+                      <PackagePicker
+                        globalPkg={basics.pkg}
+                        currentPackage={
+                          rooms.kitchen.wickerBasket?.pkgOverride || null
+                        }
+                        onPackageChange={(pkg) =>
+                          updateRoom("kitchen", {
+                            wickerBasket: {
+                              ...rooms.kitchen.wickerBasket,
+                              pkgOverride: pkg,
+                            },
+                          })
+                        }
+                        itemName="Wicker Basket"
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -443,7 +799,7 @@ export function StepRooms() {
             onClick={() => setCurrentStep(4)}
             className="bg-primary hover:bg-primary/90 text-primary-foreground px-8"
           >
-            Next: Add-Ons
+            Next
           </Button>
         </div>
       </div>

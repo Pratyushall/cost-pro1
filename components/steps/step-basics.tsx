@@ -33,7 +33,7 @@ export function StepBasics() {
     // Prefill single line areas with carpet area
     setSingleLine({
       falseCeiling: { enabled: false, areaSqft: basics.carpetAreaSqft },
-      ceilingPainting: { enabled: false, areaSqft: basics.carpetAreaSqft },
+      painting: { enabled: false, areaSqft: basics.carpetAreaSqft },
       electricalWiring: { enabled: false, areaSqft: basics.carpetAreaSqft },
     });
 
@@ -118,7 +118,7 @@ export function StepBasics() {
             disabled={!isValid}
             className="bg-primary hover:bg-primary/90 text-primary-foreground px-8"
           >
-            Next: Single Line Items
+            Next
           </Button>
         </div>
       </CardContent>

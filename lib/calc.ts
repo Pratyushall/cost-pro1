@@ -69,36 +69,57 @@ export function calcBedrooms(state: EstimatorState): number {
   let total = 0;
 
   // Master bedroom
-  total += calcWardrobe(rooms.master.size, basics.pkg, rooms.master.wardrobe);
+  total += calcWardrobe(
+    rooms.master.size,
+    basics.pkg,
+    rooms.master.wardrobe?.enabled || false
+  );
   total += calcStudyTable(
     rooms.master.size,
     basics.pkg,
-    rooms.master.studyTable
+    rooms.master.studyTable?.enabled || false
   );
   total += calcTvUnitBedroom(
     rooms.master.size,
     basics.pkg,
-    rooms.master.tvUnit
+    rooms.master.tvUnit?.enabled || false
   );
-  total += calcBedBackPanel(rooms.master.size, rooms.master.bedBackPanel);
+  total += calcBedBackPanel(
+    rooms.master.size,
+    rooms.master.bedBackPanel?.enabled || false
+  );
 
   // Children bedroom
   total += calcWardrobe(
     rooms.children.size,
     basics.pkg,
-    rooms.children.wardrobe
+    rooms.children.wardrobe?.enabled || false
   );
   total += calcStudyTable(
     rooms.children.size,
     basics.pkg,
-    rooms.children.studyTable
+    rooms.children.studyTable?.enabled || false
   );
-  total += calcBedBackPanel(rooms.children.size, rooms.children.bedBackPanel);
+  total += calcBedBackPanel(
+    rooms.children.size,
+    rooms.children.bedBackPanel?.enabled || false
+  );
 
   // Guest bedroom
-  total += calcWardrobe(rooms.guest.size, basics.pkg, rooms.guest.wardrobe);
-  total += calcStudyTable(rooms.guest.size, basics.pkg, rooms.guest.studyTable);
-  total += calcBedBackPanel(rooms.guest.size, rooms.guest.bedBackPanel);
+  total += calcWardrobe(
+    rooms.guest.size,
+    basics.pkg,
+    rooms.guest.wardrobe?.enabled || false
+  );
+  total += calcStudyTable(
+    rooms.guest.size,
+    basics.pkg,
+    rooms.guest.studyTable?.enabled || false
+  );
+  total += calcBedBackPanel(
+    rooms.guest.size,
+    rooms.guest.bedBackPanel?.enabled || false
+  );
 
   return total;
 }
@@ -108,15 +129,16 @@ export function calcLiving(state: EstimatorState): number {
   let total = 0;
 
   // TV Drawer Unit
-  if (rooms.living.tvDrawerUnit) {
+  if (rooms.living.tvDrawerUnit?.enabled) {
     total += rates.tvDrawerUnitPrice[basics.pkg][rooms.living.size];
   }
 
   // TV Panel
-  if (rooms.living.tvPanelSqft && rooms.living.tvPanelSqft > 0) {
+  const tvPanelSqft = rooms.living.tvPanel?.panelSqft || 0;
+  if (rooms.living.tvPanel?.enabled && tvPanelSqft > 0) {
     const pricePerSqft =
       rates.tvPanelPricePerSqft[basics.pkg][rooms.living.size];
-    total += rooms.living.tvPanelSqft * pricePerSqft;
+    total += tvPanelSqft * pricePerSqft;
   }
 
   return total;
@@ -127,16 +149,17 @@ export function calcPooja(state: EstimatorState): number {
   let total = 0;
 
   // Pooja Unit
-  if (rooms.pooja.unit) {
+  if (rooms.pooja.unit?.enabled && rooms.pooja.size) {
     const area = rates.poojaUnitAreaSqft[rooms.pooja.size];
     const pricePerSqft = rates.poojaPricePerSqft[basics.pkg][rooms.pooja.size];
     total += area * pricePerSqft;
   }
 
   // Pooja Doors
-  if (rooms.pooja.doorsQty > 0) {
+  const doorsQty = rooms.pooja.doors?.qty || 0;
+  if (rooms.pooja.doors?.enabled && doorsQty > 0 && rooms.pooja.size) {
     const doorPrice = rates.poojaDoorPrice[basics.pkg][rooms.pooja.size];
-    total += rooms.pooja.doorsQty * doorPrice;
+    total += doorsQty * doorPrice;
   }
 
   return total;
@@ -147,7 +170,11 @@ export function calcKitchen(state: EstimatorState): number {
   let total = 0;
 
   // Base Unit
-  if (rooms.kitchen.baseUnit) {
+  if (
+    rooms.kitchen.baseUnit?.enabled &&
+    rooms.kitchen.type &&
+    rooms.kitchen.size
+  ) {
     const area = rates.kitchenAreaSqft[rooms.kitchen.type][rooms.kitchen.size];
     const pricePerSqft = rates.kitchenBasePricePerSqft[basics.pkg];
     total += area * pricePerSqft;
@@ -156,20 +183,21 @@ export function calcKitchen(state: EstimatorState): number {
   // Accessories
   const accessories = rates.kitchenAccessories;
 
-  if (rooms.kitchen.tandemBaskets > 0) {
-    total += rooms.kitchen.tandemBaskets * accessories.tandemBasket[basics.pkg];
+  const tandemBasketsQty = rooms.kitchen.tandemBaskets?.qty || 0;
+  if (tandemBasketsQty > 0) {
+    total += tandemBasketsQty * accessories.tandemBasket[basics.pkg];
   }
 
-  if (rooms.kitchen.bottlePullout > 0) {
-    total +=
-      rooms.kitchen.bottlePullout * accessories.bottlePullout[basics.pkg];
+  const bottlePulloutQty = rooms.kitchen.bottlePullout?.qty || 0;
+  if (bottlePulloutQty > 0) {
+    total += bottlePulloutQty * accessories.bottlePullout[basics.pkg];
   }
 
-  if (rooms.kitchen.cornerUnit) {
+  if (rooms.kitchen.cornerUnit?.enabled) {
     total += accessories.cornerUnit[basics.pkg];
   }
 
-  if (rooms.kitchen.wickerBasket) {
+  if (rooms.kitchen.wickerBasket?.enabled) {
     total += accessories.wickerBasket[basics.pkg];
   }
 
@@ -180,7 +208,9 @@ export function calcAddons(state: EstimatorState): number {
   const { addons, basics } = state;
   let total = 0;
 
-  Object.entries(addons).forEach(([key, quantity]) => {
+  Object.entries(addons).forEach(([key, item]) => {
+    const quantity =
+      typeof item === "object" && item.enabled ? item.qty || 0 : 0;
     if (quantity > 0) {
       const addonKey = key as keyof typeof rates.addOns;
       const price = rates.addOns[addonKey][basics.bhk][basics.pkg];

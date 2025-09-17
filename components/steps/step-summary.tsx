@@ -8,6 +8,7 @@ import { ArrowLeft, Download, Share2, RotateCcw, Loader2 } from "lucide-react";
 import { analytics } from "@/lib/analytics";
 import { generatePDF, openPDFForPrint } from "@/lib/pdf-generator";
 import type { PriceRange } from "@/lib/types";
+import { computeExactBreakdown } from "@/lib/calc-exact";
 
 interface CalculationResult {
   singleLine: PriceRange;
@@ -42,17 +43,13 @@ export function StepSummary() {
           totals: { low: 0, high: 0, byCategory: {} },
         };
 
-        const response = await fetch("/api/calculate", {
+        const resp = await fetch("/api/calculate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(state),
         });
-
-        if (!response.ok) {
-          throw new Error("Failed to calculate estimate");
-        }
-
-        const result = await response.json();
+        if (!resp.ok) throw new Error("Failed to calculate estimate");
+        const result = await resp.json();
 
         if (result.success) {
           setCalculation(result.ranges);
@@ -67,21 +64,18 @@ export function StepSummary() {
         setLoading(false);
       }
     };
-
     calculateEstimate();
   }, [basics, single, rooms, addons]);
 
-  const formatPrice = (amount: number) => {
-    return new Intl.NumberFormat("en-IN", {
+  const formatPrice = (amount: number) =>
+    new Intl.NumberFormat("en-IN", {
       style: "currency",
       currency: "INR",
       maximumFractionDigits: 0,
     }).format(amount);
-  };
 
   const handleDownloadPDF = async () => {
     if (!calculation) return;
-
     try {
       const state = {
         basics,
@@ -90,16 +84,18 @@ export function StepSummary() {
         addons,
         totals: { low: 0, high: 0, byCategory: {} },
       };
-      const pdfBlob = await generatePDF({ state, calculation });
+      const exact = computeExactBreakdown(state as any);
+      const blob = await generatePDF({ state: state as any, calculation });
 
-      const filename = `interior-estimate-${basics.bhk}-${
-        basics.pkg
-      }-${Date.now()}.html`;
-      openPDFForPrint(pdfBlob);
+      // open in new tab for browser print → Save as PDF
+      openPDFForPrint(blob);
 
-      analytics.pdfDownloaded(basics);
-    } catch (error) {
-      console.error("PDF generation error:", error);
+      analytics.pdfDownloaded(basics, {
+        grandTotal: exact.grandTotal,
+        lines: exact.lines.length,
+      });
+    } catch (err) {
+      console.error("PDF generation error:", err);
     }
   };
 
@@ -108,22 +104,15 @@ export function StepSummary() {
       const stateData = { basics, single, rooms, addons };
       const encodedState = btoa(JSON.stringify(stateData));
       const shareUrl = `${window.location.origin}/summary#${encodedState}`;
-
       navigator.clipboard.writeText(shareUrl).then(() => {
-        console.log("[v0] Share link copied:", shareUrl);
         analytics.shareLinkCopied(basics);
-        // TODO: Show toast notification
       });
-    } catch (error) {
-      console.error("Share link error:", error);
+    } catch (err) {
+      console.error("Share link error:", err);
     }
   };
 
-  const handleStartOver = () => {
-    reset();
-  };
-
-  // ... existing code for loading, error, and render logic ...
+  const handleStartOver = () => reset();
 
   if (loading) {
     return (
@@ -248,7 +237,6 @@ export function StepSummary() {
                   </span>
                 </div>
               ))}
-
               <div className="flex justify-between items-center py-3 border-t-2 border-gray-300 mt-4">
                 <span className="text-xl font-bold text-black">
                   Grand Total
@@ -270,7 +258,7 @@ export function StepSummary() {
             className="border-gray-300 text-black hover:bg-gray-50"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Add-Ons
+            Go Back
           </Button>
 
           <div className="flex flex-1 gap-2">
@@ -280,24 +268,6 @@ export function StepSummary() {
             >
               <Download className="w-4 h-4 mr-2" />
               Download PDF
-            </Button>
-
-            <Button
-              variant="outline"
-              onClick={handleShareLink}
-              className="flex-1 border-gray-300 text-black hover:bg-gray-50 bg-transparent"
-            >
-              <Share2 className="w-4 h-4 mr-2" />
-              Copy Share Link
-            </Button>
-
-            <Button
-              variant="outline"
-              onClick={handleStartOver}
-              className="border-gray-300 text-black hover:bg-gray-50 bg-transparent"
-            >
-              <RotateCcw className="w-4 h-4 mr-2" />
-              Start Over
             </Button>
           </div>
         </div>

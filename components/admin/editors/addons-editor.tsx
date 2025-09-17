@@ -13,7 +13,7 @@ export function AddonsEditor() {
   const [addonRates, setAddonRates] = useState({
     sofa: {
       "2bhk": { Premium: 75000, Luxury: 90000 },
-      "3bhk": { Premium: 110000, Luxury: 150000 },
+      "3bhk": { Premium: 95000, Luxury: 125000 },
       "4bhk": { Premium: 140000, Luxury: 180000 },
     },
     diningTable: {
