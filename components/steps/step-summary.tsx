@@ -1,14 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useEstimatorStore } from "@/store/estimator";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Download, Share2, RotateCcw, Loader2 } from "lucide-react";
+import { ArrowLeft, Download, Loader2 } from "lucide-react";
 import { analytics } from "@/lib/analytics";
 import { generatePDF, openPDFForPrint } from "@/lib/pdf-generator";
 import type { PriceRange } from "@/lib/types";
 import { computeExactBreakdown } from "@/lib/calc-exact";
+import { OtpGate } from "@/components/otp/OtpGate";
 
 interface CalculationResult {
   singleLine: PriceRange;
@@ -23,31 +24,52 @@ interface CalculationResult {
 export function StepSummary() {
   const { basics, single, rooms, addons, setCurrentStep, reset } =
     useEstimatorStore();
+
+  // OTP verification
+  const [verified, setVerified] = useState(false);
+  const handleVerified = useCallback((_session: string) => {
+    setVerified(true);
+    analytics.track?.("otp_verified", { channel: "email_or_sms" });
+  }, []);
+
+  // estimate ranges
   const [calculation, setCalculation] = useState<CalculationResult | null>(
     null
   );
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
+  // pack current state once for fetch/PDF
+  const statePayload = useMemo(
+    () => ({
+      basics,
+      single,
+      rooms,
+      addons,
+      totals: { low: 0, high: 0, byCategory: {} },
+    }),
+    [basics, single, rooms, addons]
+  );
+
+  // Only calculate AFTER OTP verification
   useEffect(() => {
+    if (!verified) return;
+
     const calculateEstimate = async () => {
       try {
         setLoading(true);
         setError(null);
 
-        const state = {
-          basics,
-          single,
-          rooms,
-          addons,
-          totals: { low: 0, high: 0, byCategory: {} },
-        };
-
         const resp = await fetch("/api/calculate", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(state),
+          headers: {
+            "Content-Type": "application/json",
+            // Optional: include a session header if you also enforce OTP on the API
+            // "x-otp-session": localStorage.getItem("otpSession") || "",
+          },
+          body: JSON.stringify(statePayload),
         });
+
         if (!resp.ok) throw new Error("Failed to calculate estimate");
         const result = await resp.json();
 
@@ -57,15 +79,18 @@ export function StepSummary() {
         } else {
           throw new Error(result.error || "Calculation failed");
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error("Calculation error:", err);
-        setError("Failed to calculate estimate. Please try again.");
+        setError(
+          err?.message || "Failed to calculate estimate. Please try again."
+        );
       } finally {
         setLoading(false);
       }
     };
+
     calculateEstimate();
-  }, [basics, single, rooms, addons]);
+  }, [verified, statePayload, basics]);
 
   const formatPrice = (amount: number) =>
     new Intl.NumberFormat("en-IN", {
@@ -77,17 +102,12 @@ export function StepSummary() {
   const handleDownloadPDF = async () => {
     if (!calculation) return;
     try {
-      const state = {
-        basics,
-        single,
-        rooms,
-        addons,
-        totals: { low: 0, high: 0, byCategory: {} },
-      };
-      const exact = computeExactBreakdown(state as any);
-      const blob = await generatePDF({ state: state as any, calculation });
+      const exact = computeExactBreakdown(statePayload as any);
+      const blob = await generatePDF({
+        state: statePayload as any,
+        calculation,
+      });
 
-      // open in new tab for browser print → Save as PDF
       openPDFForPrint(blob);
 
       analytics.pdfDownloaded(basics, {
@@ -99,21 +119,37 @@ export function StepSummary() {
     }
   };
 
-  const handleShareLink = () => {
-    try {
-      const stateData = { basics, single, rooms, addons };
-      const encodedState = btoa(JSON.stringify(stateData));
-      const shareUrl = `${window.location.origin}/summary#${encodedState}`;
-      navigator.clipboard.writeText(shareUrl).then(() => {
-        analytics.shareLinkCopied(basics);
-      });
-    } catch (err) {
-      console.error("Share link error:", err);
-    }
-  };
-
   const handleStartOver = () => reset();
 
+  // ---------- OTP Gate first ----------
+  if (!verified) {
+    return (
+      <div className="space-y-6">
+        <CardHeader className="px-0">
+          <CardTitle className="text-2xl text-black">
+            Verify to view your estimate
+          </CardTitle>
+          <p className="text-gray-600">
+            We’ll send a one-time code via Email or SMS. Enter the code to
+            unlock your estimate summary.
+          </p>
+        </CardHeader>
+        <OtpGate onVerified={handleVerified} />
+        <div>
+          <Button
+            variant="outline"
+            onClick={() => setCurrentStep(4)}
+            className="border-gray-300 text-black hover:bg-gray-50 mt-4"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Go Back
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // ---------- Loading / Error / Empty ----------
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -147,6 +183,7 @@ export function StepSummary() {
     );
   }
 
+  // ---------- Summary UI ----------
   return (
     <div className="space-y-6">
       <CardHeader className="px-0">
@@ -237,6 +274,7 @@ export function StepSummary() {
                   </span>
                 </div>
               ))}
+
               <div className="flex justify-between items-center py-3 border-t-2 border-gray-300 mt-4">
                 <span className="text-xl font-bold text-black">
                   Grand Total
@@ -268,6 +306,15 @@ export function StepSummary() {
             >
               <Download className="w-4 h-4 mr-2" />
               Download PDF
+            </Button>
+
+            {/* Optional: Start over button */}
+            <Button
+              variant="outline"
+              onClick={handleStartOver}
+              className="border-gray-300 text-black hover:bg-gray-50 bg-transparent"
+            >
+              Reset
             </Button>
           </div>
         </div>
