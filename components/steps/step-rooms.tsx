@@ -1,3 +1,4 @@
+// components/steps/step-rooms.tsx
 "use client";
 
 import { useEstimatorStore } from "@/store/estimator";
@@ -59,10 +60,12 @@ export function StepRooms() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="bg-white">
-                    <SelectItem value="14x16">14' × 16'</SelectItem>
-                    <SelectItem value="10x12">10' × 12'</SelectItem>
-                    <SelectItem value="10x10">10' × 10'</SelectItem>
-                    <SelectItem value="11.5x11.5">11.5' × 11.5'</SelectItem>
+                    <SelectItem value="14x16">14&apos; × 16&apos;</SelectItem>
+                    <SelectItem value="10x12">10&apos; × 12&apos;</SelectItem>
+                    <SelectItem value="10x10">10&apos; × 10&apos;</SelectItem>
+                    <SelectItem value="11.5x11.5">
+                      11.5&apos; × 11.5&apos;
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -79,16 +82,12 @@ export function StepRooms() {
                   rooms.master[item.key as keyof typeof rooms.master];
                 const isEnabled =
                   typeof itemData === "object" && "enabled" in itemData
-                    ? itemData.enabled
+                    ? (itemData as any).enabled
                     : false;
 
                 return (
-                  <div
-                    key={item.key}
-                    className="border rounded-lg p-4 space-y-3"
-                  >
-                    {/* Toggle first - prominent display */}
-                    <div className="flex items-center justify-between">
+                  <div key={item.key} className="border rounded-lg p-4">
+                    <div className="flex items-center justify-between gap-4">
                       <div className="flex items-center space-x-3">
                         <Switch
                           checked={isEnabled}
@@ -103,17 +102,14 @@ export function StepRooms() {
                           {item.label}
                         </Label>
                       </div>
-                    </div>
 
-                    {/* Package picker only shows when enabled */}
-                    {isEnabled && (
-                      <div className="pl-8">
+                      {isEnabled && (
                         <PackagePicker
                           globalPkg={basics.pkg}
                           currentPackage={
                             typeof itemData === "object" &&
                             "pkgOverride" in itemData
-                              ? itemData.pkgOverride
+                              ? (itemData as any).pkgOverride
                               : null
                           }
                           onPackageChange={(pkg) =>
@@ -128,8 +124,8 @@ export function StepRooms() {
                           }
                           itemName={item.label}
                         />
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
                 );
               })}
@@ -141,7 +137,7 @@ export function StepRooms() {
         <Card className="border border-gray-200">
           <CardHeader>
             <CardTitle className="text-lg text-black">
-              Children's Bedroom
+              Children&apos;s Bedroom
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -158,10 +154,12 @@ export function StepRooms() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="bg-white">
-                    <SelectItem value="14x16">14' × 16'</SelectItem>
-                    <SelectItem value="10x12">10' × 12'</SelectItem>
-                    <SelectItem value="10x10">10' × 10'</SelectItem>
-                    <SelectItem value="11.5x11.5">11.5' × 11.5'</SelectItem>
+                    <SelectItem value="14x16">14&apos; × 16&apos;</SelectItem>
+                    <SelectItem value="10x12">10&apos; × 12&apos;</SelectItem>
+                    <SelectItem value="10x10">10&apos; × 10&apos;</SelectItem>
+                    <SelectItem value="11.5x11.5">
+                      11.5&apos; × 11.5&apos;
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -177,15 +175,12 @@ export function StepRooms() {
                   rooms.children[item.key as keyof typeof rooms.children];
                 const isEnabled =
                   typeof itemData === "object" && "enabled" in itemData
-                    ? itemData.enabled
+                    ? (itemData as any).enabled
                     : false;
 
                 return (
-                  <div
-                    key={item.key}
-                    className="border rounded-lg p-4 space-y-3"
-                  >
-                    <div className="flex items-center justify-between">
+                  <div key={item.key} className="border rounded-lg p-4">
+                    <div className="flex items-center justify-between gap-4">
                       <div className="flex items-center space-x-3">
                         <Switch
                           checked={isEnabled}
@@ -200,16 +195,14 @@ export function StepRooms() {
                           {item.label}
                         </Label>
                       </div>
-                    </div>
 
-                    {isEnabled && (
-                      <div className="pl-8">
+                      {isEnabled && (
                         <PackagePicker
                           globalPkg={basics.pkg}
                           currentPackage={
                             typeof itemData === "object" &&
                             "pkgOverride" in itemData
-                              ? itemData.pkgOverride
+                              ? (itemData as any).pkgOverride
                               : null
                           }
                           onPackageChange={(pkg) =>
@@ -224,8 +217,8 @@ export function StepRooms() {
                           }
                           itemName={item.label}
                         />
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
                 );
               })}
@@ -252,10 +245,12 @@ export function StepRooms() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="bg-white">
-                    <SelectItem value="14x16">14' × 16'</SelectItem>
-                    <SelectItem value="10x12">10' × 12'</SelectItem>
-                    <SelectItem value="10x10">10' × 10'</SelectItem>
-                    <SelectItem value="11.5x11.5">11.5' × 11.5'</SelectItem>
+                    <SelectItem value="14x16">14&apos; × 16&apos;</SelectItem>
+                    <SelectItem value="10x12">10&apos; × 12&apos;</SelectItem>
+                    <SelectItem value="10x10">10&apos; × 10&apos;</SelectItem>
+                    <SelectItem value="11.5x11.5">
+                      11.5&apos; × 11.5&apos;
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -271,15 +266,12 @@ export function StepRooms() {
                   rooms.guest[item.key as keyof typeof rooms.guest];
                 const isEnabled =
                   typeof itemData === "object" && "enabled" in itemData
-                    ? itemData.enabled
+                    ? (itemData as any).enabled
                     : false;
 
                 return (
-                  <div
-                    key={item.key}
-                    className="border rounded-lg p-4 space-y-3"
-                  >
-                    <div className="flex items-center justify-between">
+                  <div key={item.key} className="border rounded-lg p-4">
+                    <div className="flex items-center justify-between gap-4">
                       <div className="flex items-center space-x-3">
                         <Switch
                           checked={isEnabled}
@@ -294,16 +286,14 @@ export function StepRooms() {
                           {item.label}
                         </Label>
                       </div>
-                    </div>
 
-                    {isEnabled && (
-                      <div className="pl-8">
+                      {isEnabled && (
                         <PackagePicker
                           globalPkg={basics.pkg}
                           currentPackage={
                             typeof itemData === "object" &&
                             "pkgOverride" in itemData
-                              ? itemData.pkgOverride
+                              ? (itemData as any).pkgOverride
                               : null
                           }
                           onPackageChange={(pkg) =>
@@ -318,8 +308,8 @@ export function StepRooms() {
                           }
                           itemName={item.label}
                         />
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
                 );
               })}
@@ -346,10 +336,10 @@ export function StepRooms() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="bg-white">
-                    <SelectItem value="7x10">7' × 10'</SelectItem>
-                    <SelectItem value="10x13">10' × 13'</SelectItem>
-                    <SelectItem value="12x18">12' × 18'</SelectItem>
-                    <SelectItem value="15x20">15' × 20'</SelectItem>
+                    <SelectItem value="7x10">7&apos; × 10&apos;</SelectItem>
+                    <SelectItem value="10x13">10&apos; × 13&apos;</SelectItem>
+                    <SelectItem value="12x18">12&apos; × 18&apos;</SelectItem>
+                    <SelectItem value="15x20">15&apos; × 20&apos;</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -357,8 +347,8 @@ export function StepRooms() {
 
             <div className="space-y-3">
               {/* TV Drawer Unit */}
-              <div className="border rounded-lg p-4 space-y-3">
-                <div className="flex items-center justify-between">
+              <div className="border rounded-lg p-4">
+                <div className="flex items-center justify-between gap-4">
                   <div className="flex items-center space-x-3">
                     <Switch
                       checked={rooms.living.tvDrawerUnit?.enabled || false}
@@ -373,10 +363,8 @@ export function StepRooms() {
                       TV Drawer Unit
                     </Label>
                   </div>
-                </div>
 
-                {rooms.living.tvDrawerUnit?.enabled && (
-                  <div className="pl-8">
+                  {rooms.living.tvDrawerUnit?.enabled && (
                     <PackagePicker
                       globalPkg={basics.pkg}
                       currentPackage={
@@ -392,13 +380,13 @@ export function StepRooms() {
                       }
                       itemName="TV Drawer Unit"
                     />
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
 
               {/* TV Unit Panelling */}
               <div className="border rounded-lg p-4 space-y-3">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-4">
                   <div className="flex items-center space-x-3">
                     <Switch
                       checked={rooms.living.tvPanel?.enabled || false}
@@ -416,10 +404,26 @@ export function StepRooms() {
                       TV Unit Panelling
                     </Label>
                   </div>
+
+                  {rooms.living.tvPanel?.enabled && (
+                    <PackagePicker
+                      globalPkg={basics.pkg}
+                      currentPackage={rooms.living.tvPanel?.pkgOverride || null}
+                      onPackageChange={(pkg) =>
+                        updateRoom("living", {
+                          tvPanel: {
+                            ...rooms.living.tvPanel,
+                            pkgOverride: pkg,
+                          },
+                        })
+                      }
+                      itemName="TV Panel"
+                    />
+                  )}
                 </div>
 
                 {rooms.living.tvPanel?.enabled && (
-                  <div className="pl-8 space-y-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <Label className="text-black text-sm">
                         Panel Area (sq ft)
@@ -439,19 +443,6 @@ export function StepRooms() {
                         placeholder="60"
                       />
                     </div>
-                    <PackagePicker
-                      globalPkg={basics.pkg}
-                      currentPackage={rooms.living.tvPanel?.pkgOverride || null}
-                      onPackageChange={(pkg) =>
-                        updateRoom("living", {
-                          tvPanel: {
-                            ...rooms.living.tvPanel,
-                            pkgOverride: pkg,
-                          },
-                        })
-                      }
-                      itemName="TV Panel"
-                    />
                   </div>
                 )}
               </div>
@@ -478,8 +469,8 @@ export function StepRooms() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="bg-white">
-                    <SelectItem value="9x9">9' × 9'</SelectItem>
-                    <SelectItem value="3x3">3' × 3'</SelectItem>
+                    <SelectItem value="9x9">9&apos; × 9&apos;</SelectItem>
+                    <SelectItem value="3x3">3&apos; × 3&apos;</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -488,7 +479,7 @@ export function StepRooms() {
             <div className="space-y-3">
               {/* Doors */}
               <div className="border rounded-lg p-4 space-y-3">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-4">
                   <div className="flex items-center space-x-3">
                     <Switch
                       checked={rooms.pooja.doors?.enabled || false}
@@ -504,30 +495,8 @@ export function StepRooms() {
                     />
                     <Label className="text-black font-medium">Doors</Label>
                   </div>
-                </div>
 
-                {rooms.pooja.doors?.enabled && (
-                  <div className="pl-8 space-y-3">
-                    <div>
-                      <Label className="text-black text-sm">
-                        Number of Doors
-                      </Label>
-                      <Input
-                        type="number"
-                        value={rooms.pooja.doors?.qty || ""}
-                        onChange={(e) =>
-                          updateRoom("pooja", {
-                            doors: {
-                              ...rooms.pooja.doors,
-                              qty: Number(e.target.value),
-                            },
-                          })
-                        }
-                        className="bg-white border-gray-300 mt-1"
-                        placeholder="0"
-                        min="0"
-                      />
-                    </div>
+                  {rooms.pooja.doors?.enabled && (
                     <PackagePicker
                       globalPkg={basics.pkg}
                       currentPackage={rooms.pooja.doors?.pkgOverride || null}
@@ -540,6 +509,29 @@ export function StepRooms() {
                         })
                       }
                       itemName="Doors"
+                    />
+                  )}
+                </div>
+
+                {rooms.pooja.doors?.enabled && (
+                  <div>
+                    <Label className="text-black text-sm">
+                      Number of Doors
+                    </Label>
+                    <Input
+                      type="number"
+                      value={rooms.pooja.doors?.qty || ""}
+                      onChange={(e) =>
+                        updateRoom("pooja", {
+                          doors: {
+                            ...rooms.pooja.doors,
+                            qty: Number(e.target.value),
+                          },
+                        })
+                      }
+                      className="bg-white border-gray-300 mt-1"
+                      placeholder="0"
+                      min={0}
                     />
                   </div>
                 )}
@@ -559,7 +551,7 @@ export function StepRooms() {
                 <Label className="text-black font-medium">Kitchen Type</Label>
                 <Select
                   value={rooms.kitchen.type}
-                  onValueChange={(value: KitchenType) =>
+                  onValueChange={(value: KitchenType | "Modular") =>
                     updateRoom("kitchen", { type: value })
                   }
                 >
@@ -570,7 +562,7 @@ export function StepRooms() {
                     <SelectItem value="Parallel">Parallel</SelectItem>
                     <SelectItem value="L-shaped">L-shaped</SelectItem>
                     <SelectItem value="Island">Island</SelectItem>
-                    <SelectItem value="Modular Kitchen">Modular</SelectItem>
+                    <SelectItem value="Modular">Modular Kitchen</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -586,15 +578,16 @@ export function StepRooms() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="bg-white">
-                    <SelectItem value="8x10">8' × 10'</SelectItem>
-                    <SelectItem value="10x12">10' × 12'</SelectItem>
-                    <SelectItem value="12x14">12' × 14'</SelectItem>
+                    <SelectItem value="8x10">8&apos; × 10&apos;</SelectItem>
+                    <SelectItem value="10x12">10&apos; × 12&apos;</SelectItem>
+                    <SelectItem value="12x14">12&apos; × 14&apos;</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
 
             <div className="space-y-3">
+              {/* Base Unit */}
               <div className="flex items-center justify-between p-3 border rounded-lg">
                 <div className="flex items-center space-x-3">
                   <Switch
@@ -606,27 +599,25 @@ export function StepRooms() {
                   />
                   <Label className="text-black">Base Unit</Label>
                 </div>
+
                 {rooms.kitchen.baseUnit?.enabled && (
-                  <div className="pl-8">
-                    <PackagePicker
-                      globalPkg={basics.pkg}
-                      currentPackage={
-                        rooms.kitchen.baseUnit?.pkgOverride || null
-                      }
-                      onPackageChange={(pkg) =>
-                        updateRoom("kitchen", {
-                          baseUnit: {
-                            ...rooms.kitchen.baseUnit,
-                            pkgOverride: pkg,
-                          },
-                        })
-                      }
-                      itemName="Base Unit"
-                    />
-                  </div>
+                  <PackagePicker
+                    globalPkg={basics.pkg}
+                    currentPackage={rooms.kitchen.baseUnit?.pkgOverride || null}
+                    onPackageChange={(pkg) =>
+                      updateRoom("kitchen", {
+                        baseUnit: {
+                          ...rooms.kitchen.baseUnit,
+                          pkgOverride: pkg,
+                        },
+                      })
+                    }
+                    itemName="Base Unit"
+                  />
                 )}
               </div>
 
+              {/* Quantity inputs */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label className="text-black text-sm">Tandem Baskets</Label>
@@ -644,7 +635,7 @@ export function StepRooms() {
                     }
                     className="bg-white border-gray-300"
                     placeholder="0"
-                    min="0"
+                    min={0}
                   />
                 </div>
                 <div>
@@ -663,7 +654,7 @@ export function StepRooms() {
                     }
                     className="bg-white border-gray-300"
                     placeholder="0"
-                    min="0"
+                    min={0}
                   />
                 </div>
               </div>
@@ -714,73 +705,69 @@ export function StepRooms() {
                 </div>
               )}
 
-              <div className="space-y-3">
-                <div className="flex items-center justify-between p-3 border rounded-lg">
-                  <div className="flex items-center space-x-3">
-                    <Switch
-                      checked={rooms.kitchen.cornerUnit?.enabled || false}
-                      onCheckedChange={(checked) =>
-                        updateRoom("kitchen", {
-                          cornerUnit: { enabled: checked },
-                        })
-                      }
-                      className="toggle-switch"
-                    />
-                    <Label className="text-black">Corner Unit</Label>
-                  </div>
-                  {rooms.kitchen.cornerUnit?.enabled && (
-                    <div className="pl-8">
-                      <PackagePicker
-                        globalPkg={basics.pkg}
-                        currentPackage={
-                          rooms.kitchen.cornerUnit?.pkgOverride || null
-                        }
-                        onPackageChange={(pkg) =>
-                          updateRoom("kitchen", {
-                            cornerUnit: {
-                              ...rooms.kitchen.cornerUnit,
-                              pkgOverride: pkg,
-                            },
-                          })
-                        }
-                        itemName="Corner Unit"
-                      />
-                    </div>
-                  )}
+              {/* Corner & Wicker */}
+              <div className="flex items-center justify-between p-3 border rounded-lg">
+                <div className="flex items-center space-x-3">
+                  <Switch
+                    checked={rooms.kitchen.cornerUnit?.enabled || false}
+                    onCheckedChange={(checked) =>
+                      updateRoom("kitchen", {
+                        cornerUnit: { enabled: checked },
+                      })
+                    }
+                    className="toggle-switch"
+                  />
+                  <Label className="text-black">Corner Unit</Label>
                 </div>
-                <div className="flex items-center justify-between p-3 border rounded-lg">
-                  <div className="flex items-center space-x-3">
-                    <Switch
-                      checked={rooms.kitchen.wickerBasket?.enabled || false}
-                      onCheckedChange={(checked) =>
-                        updateRoom("kitchen", {
-                          wickerBasket: { enabled: checked },
-                        })
-                      }
-                      className="toggle-switch"
-                    />
-                    <Label className="text-black">Wicker Basket</Label>
-                  </div>
-                  {rooms.kitchen.wickerBasket?.enabled && (
-                    <div className="pl-8">
-                      <PackagePicker
-                        globalPkg={basics.pkg}
-                        currentPackage={
-                          rooms.kitchen.wickerBasket?.pkgOverride || null
-                        }
-                        onPackageChange={(pkg) =>
-                          updateRoom("kitchen", {
-                            wickerBasket: {
-                              ...rooms.kitchen.wickerBasket,
-                              pkgOverride: pkg,
-                            },
-                          })
-                        }
-                        itemName="Wicker Basket"
-                      />
-                    </div>
-                  )}
+                {rooms.kitchen.cornerUnit?.enabled && (
+                  <PackagePicker
+                    globalPkg={basics.pkg}
+                    currentPackage={
+                      rooms.kitchen.cornerUnit?.pkgOverride || null
+                    }
+                    onPackageChange={(pkg) =>
+                      updateRoom("kitchen", {
+                        cornerUnit: {
+                          ...rooms.kitchen.cornerUnit,
+                          pkgOverride: pkg,
+                        },
+                      })
+                    }
+                    itemName="Corner Unit"
+                  />
+                )}
+              </div>
+
+              <div className="flex items-center justify-between p-3 border rounded-lg">
+                <div className="flex items-center space-x-3">
+                  <Switch
+                    checked={rooms.kitchen.wickerBasket?.enabled || false}
+                    onCheckedChange={(checked) =>
+                      updateRoom("kitchen", {
+                        wickerBasket: { enabled: checked },
+                      })
+                    }
+                    className="toggle-switch"
+                  />
+                  <Label className="text-black">Wicker Basket</Label>
                 </div>
+                {rooms.kitchen.wickerBasket?.enabled && (
+                  <PackagePicker
+                    globalPkg={basics.pkg}
+                    currentPackage={
+                      rooms.kitchen.wickerBasket?.pkgOverride || null
+                    }
+                    onPackageChange={(pkg) =>
+                      updateRoom("kitchen", {
+                        wickerBasket: {
+                          ...rooms.kitchen.wickerBasket,
+                          pkgOverride: pkg,
+                        },
+                      })
+                    }
+                    itemName="Wicker Basket"
+                  />
+                )}
               </div>
             </div>
           </CardContent>
