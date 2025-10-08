@@ -1,86 +1,66 @@
 // app/api/otp/request/route.ts
 import { NextResponse } from "next/server";
-import { genCode, makePayload, signToken, type OtpChannel } from "@/lib/otp";
+import { genOtp, storeOtp } from "@/lib/otp";
+
+const GRAPH = "https://graph.facebook.com/v21.0";
+
+function toE164(input: string) {
+  let p = (input || "").replace(/[^\d+]/g, "");
+  if (p.startsWith("0")) p = p.replace(/^0+/, "");
+  if (!p.startsWith("+")) p = `+91${p}`;
+  return p;
+}
 
 export async function POST(req: Request) {
   try {
-    const { channel, to } = (await req.json()) as {
-      channel: OtpChannel;
-      to: string;
-    };
-    if (!channel || !to)
+    const body = await req.json().catch(() => ({}));
+    const to = toE164(body?.phone || "");
+    if (!/^\+?\d{10,15}$/.test(to)) {
       return NextResponse.json(
-        { ok: false, error: "Invalid input" },
-        { status: 400 }
-      );
-
-    const code = genCode();
-    const payload = makePayload(channel, to, code);
-    const token = signToken(payload);
-
-    if (channel === "email") {
-      const RESEND_API_KEY = process.env.RESEND_API_KEY;
-      const FROM = process.env.OTP_FROM_EMAIL;
-      if (!RESEND_API_KEY || !FROM)
-        return NextResponse.json(
-          { ok: false, error: "Email not configured" },
-          { status: 500 }
-        );
-
-      // simple mail via Resend REST
-      await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${RESEND_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          from: FROM,
-          to,
-          subject: "Your verification code",
-          html: `<p>Your OTP is <strong>${code}</strong>. It expires in 5 minutes.</p>`,
-        }),
-      });
-    } else if (channel === "sms") {
-      const sid = process.env.TWILIO_ACCOUNT_SID;
-      const auth = process.env.TWILIO_AUTH_TOKEN;
-      const from = process.env.TWILIO_FROM_NUMBER;
-      if (!sid || !auth || !from)
-        return NextResponse.json(
-          { ok: false, error: "SMS not configured" },
-          { status: 500 }
-        );
-
-      const body = new URLSearchParams({
-        To: to,
-        From: from,
-        Body: `Your OTP is ${code}. It expires in 5 minutes.`,
-      });
-
-      await fetch(
-        `https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`,
-        {
-          method: "POST",
-          headers: {
-            Authorization:
-              "Basic " + Buffer.from(`${sid}:${auth}`).toString("base64"),
-            "Content-Type": "application/x-www-form-urlencoded",
-          },
-          body,
-        }
-      );
-    } else {
-      return NextResponse.json(
-        { ok: false, error: "Unsupported channel" },
+        { ok: false, error: "bad_phone" },
         { status: 400 }
       );
     }
 
-    // you can add minimal anti-spam by refusing reissue for 30s via a short token field (iat) on client-side UI
-    return NextResponse.json({ ok: true, token });
-  } catch (e) {
+    // generate & store 6-digit OTP with TTL/attempt limits
+    const otp = genOtp(6);
+    await storeOtp(to, otp);
+
+    // send via WhatsApp Cloud API (test number allows plain text)
+    const res = await fetch(
+      `${GRAPH}/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${process.env.WHATSAPP_TOKEN}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          messaging_product: "whatsapp",
+          to,
+          type: "text",
+          text: {
+            preview_url: false,
+            body: `Your verification code is ${otp}. It expires in ${
+              parseInt(process.env.OTP_TTL_SEC || "300", 10) / 60
+            } minutes.`,
+          },
+        }),
+      }
+    );
+
+    if (!res.ok) {
+      const detail = await res.text();
+      return NextResponse.json(
+        { ok: false, error: "send_failed", detail },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ ok: true });
+  } catch (e: any) {
     return NextResponse.json(
-      { ok: false, error: "Failed to send OTP" },
+      { ok: false, error: "server_error", detail: String(e?.message || e) },
       { status: 500 }
     );
   }
