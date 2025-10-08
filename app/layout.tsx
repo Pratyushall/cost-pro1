@@ -30,20 +30,24 @@ export default function RootLayout({
         {/* ⬇️ runs before any React/rehydration */}
         <Script id="icp-prehydrate-cleanup" strategy="beforeInteractive">
           {`
-            (function(){
-              try {
-                var LA='ICP_LAST_ACTIVE';
-                var ST='ICP_STATE';
-                var now=Date.now();
-                var t = Number(localStorage.getItem(LA) || 0);
-                var TIMEOUT = ${timeoutMs};
-                if (!t || now - t > TIMEOUT) {
-                  localStorage.removeItem(ST);
-                  localStorage.removeItem(LA);
-                }
-              } catch (e) {}
-            })();
-          `}
+  (function(){
+    try {
+      var LA='ICP_LAST_ACTIVE';
+      var NOW=Date.now();
+      var t = Number(localStorage.getItem(LA) || 0);
+      var TIMEOUT=${
+        Number(process.env.NEXT_PUBLIC_SESSION_TIMEOUT_MIN ?? 30) * 60 * 1000
+      };
+      if (!t || NOW - t > TIMEOUT) {
+        // new key
+        localStorage.removeItem('ICP_STATE');
+        // old key (from older build)
+        localStorage.removeItem('interior-estimator-storage');
+        localStorage.removeItem(LA);
+      }
+    } catch(e) {}
+  })();
+`}
         </Script>
 
         <SessionGuard estimatorRoot="/estimator">

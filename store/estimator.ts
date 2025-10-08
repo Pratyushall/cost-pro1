@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { persist, createJSONStorage } from "zustand/middleware";
 import type {
   EstimatorState,
   Basics,
@@ -35,12 +35,13 @@ interface EstimatorStore extends EstimatorState {
   reset: () => void;
 }
 
+const STORAGE_KEY = "ICP_STATE"; // <- must match prehydrate cleanup
+const LAST_ACTIVE_KEY = "ICP_LAST_ACTIVE"; // <- updated by SessionGuard
+const TIMEOUT_MIN = Number(process.env.NEXT_PUBLIC_SESSION_TIMEOUT_MIN ?? 30);
+const TIMEOUT_MS = TIMEOUT_MIN * 60 * 1000;
+
 const initialState: EstimatorState = {
-  basics: {
-    carpetAreaSqft: 0,
-    bhk: "3bhk",
-    pkg: "Premium",
-  },
+  basics: { carpetAreaSqft: 0, bhk: "3bhk", pkg: "Premium" },
   single: {
     falseCeiling: { enabled: false },
     painting: { enabled: false },
@@ -94,179 +95,150 @@ const initialState: EstimatorState = {
     designerLights: { enabled: false, qty: 0 },
     curtains: { enabled: false, qty: 0 },
   },
-  totals: {
-    low: 0,
-    high: 0,
-    byCategory: {},
-  },
+  totals: { low: 0, high: 0, byCategory: {} },
 };
+
+// Guarded localStorage: if expired, pretend there's nothing stored.
+const guardedStorage = {
+  getItem: (name: string) => {
+    try {
+      const t = Number(localStorage.getItem(LAST_ACTIVE_KEY) || 0);
+      const expired = !t || Date.now() - t > TIMEOUT_MS;
+      if (expired) {
+        localStorage.removeItem(name);
+        localStorage.removeItem(LAST_ACTIVE_KEY);
+        return null; // <- forces fresh state (step 0)
+      }
+      return localStorage.getItem(name);
+    } catch {
+      return null;
+    }
+  },
+  setItem: (name: string, value: string) => {
+    try {
+      localStorage.setItem(name, value);
+    } catch {}
+  },
+  removeItem: (name: string) => {
+    try {
+      localStorage.removeItem(name);
+    } catch {}
+  },
+} as Storage;
 
 export const useEstimatorStore = create<EstimatorStore>()(
   persist(
     (set, get) => ({
       ...initialState,
-      currentStep: 1,
+      currentStep: 0, // <- start from step 0
 
       setCurrentStep: (step) => set({ currentStep: step }),
-
       setBasics: (basics) =>
-        set((state) => ({
-          basics: { ...state.basics, ...basics },
-        })),
-
+        set((s) => ({ basics: { ...s.basics, ...basics } })),
       setSingleLine: (single) =>
-        set((state) => ({
-          single: { ...state.single, ...single },
-        })),
-
+        set((s) => ({ single: { ...s.single, ...single } })),
       updateSingleLine: (item, updates) =>
-        set((state) => ({
-          single: {
-            ...state.single,
-            [item]: {
-              ...state.single[item],
-              ...updates,
-            },
-          },
+        set((s) => ({
+          single: { ...s.single, [item]: { ...s.single[item], ...updates } },
         })),
-
       updateRooms: (room, updates) =>
-        set((state) => ({
-          rooms: {
-            ...state.rooms,
-            [room]: {
-              ...state.rooms[room],
-              ...updates,
-            },
-          },
+        set((s) => ({
+          rooms: { ...s.rooms, [room]: { ...s.rooms[room], ...updates } },
         })),
-
       updateAddons: (addon, updates) =>
-        set((state) => ({
-          addons: {
-            ...state.addons,
-            [addon]: {
-              ...state.addons[addon],
-              ...updates,
-            },
-          },
+        set((s) => ({
+          addons: { ...s.addons, [addon]: { ...s.addons[addon], ...updates } },
         })),
-
       setTotals: (totals) => set({ totals }),
-
       setSingleLinePackageOverride: (item, pkg) =>
-        set((state) => ({
+        set((s) => ({
           single: {
-            ...state.single,
-            [item]: {
-              ...state.single[item],
-              pkgOverride: pkg,
-            },
+            ...s.single,
+            [item]: { ...s.single[item], pkgOverride: pkg },
           },
         })),
-
       setRoomPackageOverride: (room, item, pkg) =>
-        set((state) => {
-          const currentRoom = state.rooms[room];
-          const currentItem = currentRoom[item as keyof typeof currentRoom];
-
+        set((s) => {
+          const r = s.rooms[room];
+          const cur = r[item as keyof typeof r];
           return {
             rooms: {
-              ...state.rooms,
+              ...s.rooms,
               [room]: {
-                ...currentRoom,
+                ...r,
                 [item]: {
-                  ...(typeof currentItem === "object"
-                    ? currentItem
-                    : { enabled: false }),
+                  ...(typeof cur === "object" ? cur : { enabled: false }),
                   pkgOverride: pkg,
                 },
               },
             },
           };
         }),
-
       setAddonPackageOverride: (addon, pkg) =>
-        set((state) => ({
+        set((s) => ({
           addons: {
-            ...state.addons,
-            [addon]: {
-              ...state.addons[addon],
-              pkgOverride: pkg,
-            },
+            ...s.addons,
+            [addon]: { ...s.addons[addon], pkgOverride: pkg },
           },
         })),
-
       toggleSingleLineItem: (item, enabled) =>
-        set((state) => {
-          const newItem = { ...state.single[item], enabled };
-          // Prefill areaSqft with carpetAreaSqft when enabling
-          if (enabled && !newItem.areaSqft) {
-            newItem.areaSqft = state.basics.carpetAreaSqft;
-          }
-          return {
-            single: {
-              ...state.single,
-              [item]: newItem,
-            },
-          };
+        set((s) => {
+          const next = { ...s.single[item], enabled };
+          if (enabled && !next.areaSqft)
+            next.areaSqft = s.basics.carpetAreaSqft;
+          return { single: { ...s.single, [item]: next } };
         }),
-
       toggleRoomItem: (room, item, enabled) =>
-        set((state) => {
-          const currentRoom = state.rooms[room];
-          const currentItem = currentRoom[item as keyof typeof currentRoom];
-
+        set((s) => {
+          const r = s.rooms[room];
+          const cur = r[item as keyof typeof r];
           return {
             rooms: {
-              ...state.rooms,
+              ...s.rooms,
               [room]: {
-                ...currentRoom,
+                ...r,
                 [item]: {
-                  ...(typeof currentItem === "object"
-                    ? currentItem
-                    : { enabled: false }),
+                  ...(typeof cur === "object" ? cur : { enabled: false }),
                   enabled,
                 },
               },
             },
           };
         }),
-
       toggleAddonItem: (addon, enabled) =>
-        set((state) => ({
+        set((s) => ({
           addons: {
-            ...state.addons,
-            [addon]: {
-              ...state.addons[addon],
-              enabled,
-              qty: enabled ? 1 : 0,
-            },
+            ...s.addons,
+            [addon]: { ...s.addons[addon], enabled, qty: enabled ? 1 : 0 },
           },
         })),
-
       toggleKitchen: (enabled) =>
-        set((state) => ({
+        set((s) => ({
           rooms: {
-            ...state.rooms,
+            ...s.rooms,
             kitchen: {
-              ...state.rooms.kitchen,
+              ...s.rooms.kitchen,
               enabled,
-              // Reset baseUnit to enabled when kitchen is enabled
               baseUnit: {
-                ...state.rooms.kitchen.baseUnit,
+                ...s.rooms.kitchen.baseUnit,
                 enabled: enabled
                   ? true
-                  : state.rooms.kitchen.baseUnit?.enabled || false,
+                  : s.rooms.kitchen.baseUnit?.enabled || false,
               },
             },
           },
         })),
-
-      reset: () => set({ ...initialState, currentStep: 1 }),
+      reset: () => set({ ...initialState, currentStep: 0 }),
     }),
     {
-      name: "interior-estimator-storage",
+      name: STORAGE_KEY,
+      storage: createJSONStorage(() => guardedStorage), // <- the key fix
+      version: 1,
+      migrate: (persisted: any) => {
+        if (typeof persisted?.currentStep !== "number")
+          persisted.currentStep = 0;
+        return persisted;
+      },
     }
   )
 );
