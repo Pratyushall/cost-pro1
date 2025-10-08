@@ -1,14 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useEstimatorStore } from "@/store/estimator";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Download, Share2, RotateCcw, Loader2 } from "lucide-react";
+import { ArrowLeft, Download, RotateCcw, Loader2 } from "lucide-react";
 import { analytics } from "@/lib/analytics";
 import { generatePDF, openPDFForPrint } from "@/lib/pdf-generator";
 import type { PriceRange } from "@/lib/types";
 import { computeExactBreakdown } from "@/lib/calc-exact";
+
+const DUMMY_MODE =
+  typeof window !== "undefined" && process.env.NEXT_PUBLIC_OTP_DUMMY === "true";
+const DUMMY_OTP = "000000";
 
 interface CalculationResult {
   singleLine: PriceRange;
@@ -23,17 +27,150 @@ interface CalculationResult {
 export function StepSummary() {
   const { basics, single, rooms, addons, setCurrentStep, reset } =
     useEstimatorStore();
+
+  // ---------- OTP gate state ----------
+  const [phone, setPhone] = useState<string>("");
+  const [otp, setOtp] = useState<string>("");
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpSending, setOtpSending] = useState(false);
+  const [otpVerifying, setOtpVerifying] = useState(false);
+  const [verified, setVerified] = useState(false);
+  const [otpMsg, setOtpMsg] = useState<string | null>(null);
+
+  // Consents under phone input
+  const [consentConnect, setConsentConnect] = useState(false);
+  const [consentCall, setConsentCall] = useState(false);
+
+  // Optional prefill
+  useEffect(() => {
+    // @ts-ignore
+    const prefilled =
+      (rooms as any)?.contact?.phone || (addons as any)?.contact?.phone || "";
+    if (prefilled && !phone) setPhone(prefilled);
+  }, [rooms, addons, phone]);
+
+  const phoneE164 = useMemo(() => {
+    let p = phone.replace(/[^\d+]/g, "");
+    if (p.startsWith("0")) p = p.replace(/^0+/, "");
+    if (!p.startsWith("+")) p = `+91${p}`;
+    return p;
+  }, [phone]);
+
+  // ---- HERE: sendWaOtp (includes dummy mode) ----
+  async function sendWaOtp() {
+    try {
+      setOtpMsg(null);
+
+      // Basic phone validation
+      if (!/^\+?\d{10,15}$/.test(phoneE164)) {
+        setOtpMsg("Please enter a valid phone number");
+        return;
+      }
+
+      // Dummy dev bypass
+      if (DUMMY_MODE) {
+        setOtpSent(true);
+        setOtpMsg(`Dev mode: use ${DUMMY_OTP} to continue.`);
+        return;
+      }
+
+      setOtpSending(true);
+      const r = await fetch("/api/otp/wa/request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: phoneE164, consentConnect, consentCall }),
+      });
+      const j = await r.json();
+      if (!r.ok || !j.ok) {
+        setOtpMsg("Failed to send OTP. Please try again.");
+        setOtpSent(false);
+      } else {
+        setOtpSent(true);
+        setOtpMsg("OTP sent on WhatsApp. It expires in 5 minutes.");
+        try {
+          (analytics as any)?.otpRequested?.({
+            method: "whatsapp",
+            phone: phoneE164,
+            consentConnect,
+            consentCall,
+          });
+        } catch {}
+      }
+    } catch {
+      setOtpMsg("Something went wrong. Please try again.");
+    } finally {
+      setOtpSending(false);
+    }
+  }
+
+  // ---- HERE: verifyWaOtp (includes dummy mode) ----
+  async function verifyWaOtp() {
+    try {
+      setOtpMsg(null);
+
+      // Dummy dev bypass
+      if (DUMMY_MODE && otp === DUMMY_OTP) {
+        setVerified(true);
+        setOtpMsg(null);
+        return;
+      }
+
+      if (otp.length !== 6) {
+        setOtpMsg("Enter the 6-digit code.");
+        return;
+      }
+
+      setOtpVerifying(true);
+      const r = await fetch("/api/otp/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: phoneE164, otp }),
+      });
+      const j = await r.json();
+      if (!r.ok || !j.ok) {
+        const reason = j?.error || "invalid";
+        setOtpMsg(
+          reason === "expired"
+            ? "Code expired. Please request a new OTP."
+            : reason === "locked"
+            ? "Too many attempts. Request a new OTP."
+            : "Invalid code. Please try again."
+        );
+        setVerified(false);
+      } else {
+        setVerified(true);
+        setOtpMsg(null);
+        try {
+          (analytics as any)?.otpVerified?.({
+            method: "whatsapp",
+            phone: phoneE164,
+            consentConnect,
+            consentCall,
+          });
+        } catch {}
+      }
+    } catch {
+      setOtpMsg("Verification failed. Please try again.");
+      setVerified(false);
+    } finally {
+      setOtpVerifying(false);
+    }
+  }
+
+  // ---------- Calculation (runs only AFTER verified) ----------
   const [calculation, setCalculation] = useState<CalculationResult | null>(
     null
   );
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [calcError, setCalcError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!verified) return;
+
     const calculateEstimate = async () => {
       try {
         setLoading(true);
-        setError(null);
+        setCalcError(null);
 
         const state = {
           basics,
@@ -59,13 +196,13 @@ export function StepSummary() {
         }
       } catch (err) {
         console.error("Calculation error:", err);
-        setError("Failed to calculate estimate. Please try again.");
+        setCalcError("Failed to calculate estimate. Please try again.");
       } finally {
         setLoading(false);
       }
     };
     calculateEstimate();
-  }, [basics, single, rooms, addons]);
+  }, [verified, basics, single, rooms, addons]);
 
   const formatPrice = (amount: number) =>
     new Intl.NumberFormat("en-IN", {
@@ -86,10 +223,7 @@ export function StepSummary() {
       };
       const exact = computeExactBreakdown(state as any);
       const blob = await generatePDF({ state: state as any, calculation });
-
-      // open in new tab for browser print → Save as PDF
       openPDFForPrint(blob);
-
       analytics.pdfDownloaded(basics, {
         grandTotal: exact.grandTotal,
         lines: exact.lines.length,
@@ -99,21 +233,153 @@ export function StepSummary() {
     }
   };
 
-  const handleShareLink = () => {
-    try {
-      const stateData = { basics, single, rooms, addons };
-      const encodedState = btoa(JSON.stringify(stateData));
-      const shareUrl = `${window.location.origin}/summary#${encodedState}`;
-      navigator.clipboard.writeText(shareUrl).then(() => {
-        analytics.shareLinkCopied(basics);
-      });
-    } catch (err) {
-      console.error("Share link error:", err);
-    }
+  const handleStartOver = () => {
+    reset();
+    setCurrentStep(0);
   };
 
-  const handleStartOver = () => reset();
+  // ----------- OTP Gate FIRST -----------
+  if (!verified) {
+    const phoneValid = /^\+?\d{10,15}$/.test(phoneE164);
 
+    return (
+      <div className="max-w-xl mx-auto">
+        <Card className="border border-gray-200">
+          <CardHeader>
+            <CardTitle className="text-xl text-black">
+              Verify to view your estimate
+            </CardTitle>
+            <p className="text-sm text-gray-600">
+              Enter your phone number to receive a one-time code on WhatsApp.
+              After verification, your estimate summary will be displayed.
+            </p>
+          </CardHeader>
+          <CardContent>
+            <label className="block text-sm text-gray-700 mb-1">
+              Phone number
+            </label>
+            <div className="flex gap-2">
+              <input
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="+91 98765 43210"
+                className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-black outline-none focus:ring-2 focus:ring-primary"
+              />
+              <Button
+                onClick={sendWaOtp}
+                disabled={otpSending || !phoneValid}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground"
+              >
+                {otpSending ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : null}
+                {otpSent ? "Resend OTP" : "Send OTP"}
+              </Button>
+            </div>
+
+            {/* Consents right under phone field */}
+            <div className="mt-4 space-y-2">
+              <label className="flex items-start gap-3">
+                <input
+                  type="checkbox"
+                  checked={consentConnect}
+                  onChange={(e) => setConsentConnect(e.target.checked)}
+                  className="mt-1 h-4 w-4 rounded border-gray-300"
+                />
+                <span className="text-sm text-gray-700">
+                  I’d like to receive a free plan and be connected with a vetted
+                  interior design company.
+                  <span className="block text-xs text-gray-500">
+                    We may contact you on WhatsApp/phone. You can opt out
+                    anytime.
+                  </span>
+                </span>
+              </label>
+
+              <label className="flex items-start gap-3">
+                <input
+                  type="checkbox"
+                  checked={consentCall}
+                  onChange={(e) => setConsentCall(e.target.checked)}
+                  className="mt-1 h-4 w-4 rounded border-gray-300"
+                />
+                <span className="text-sm text-gray-700">
+                  It’s okay to call me about my project (otherwise contact me on
+                  WhatsApp only).
+                </span>
+              </label>
+
+              {DUMMY_MODE && (
+                <div className="text-xs text-gray-500">
+                  Dev mode: enter <b>{DUMMY_OTP}</b> as OTP or{" "}
+                  <button
+                    type="button"
+                    className="underline"
+                    onClick={() => {
+                      setOtpSent(true);
+                      setOtp(DUMMY_OTP);
+                      setOtpMsg(
+                        `Dev mode: prefilled ${DUMMY_OTP}. Click Verify to continue.`
+                      );
+                    }}
+                  >
+                    skip & prefill
+                  </button>
+                  .
+                </div>
+              )}
+            </div>
+
+            {otpSent && (
+              <div className="mt-4">
+                <label className="block text-sm text-gray-700 mb-1">
+                  Enter 6-digit code
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    inputMode="numeric"
+                    pattern="\d*"
+                    maxLength={6}
+                    value={otp}
+                    onChange={(e) =>
+                      setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))
+                    }
+                    placeholder="••••••"
+                    className="w-40 rounded-md border border-gray-300 px-3 py-2 text-black tracking-widest text-center outline-none focus:ring-2 focus:ring-primary"
+                  />
+                  <Button
+                    onClick={verifyWaOtp}
+                    disabled={otpVerifying || otp.length !== 6}
+                    className="bg-black hover:bg-black/90 text-white"
+                  >
+                    {otpVerifying ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : null}
+                    Verify
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {otpMsg && <p className="mt-3 text-sm text-gray-700">{otpMsg}</p>}
+
+            <div className="mt-8 flex justify-center">
+              <Button
+                variant="ghost"
+                onClick={handleStartOver}
+                className="text-black"
+              >
+                <RotateCcw className="w-4 h-4 mr-2" />
+                Restart
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // ----------- AFTER verify -----------
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -125,10 +391,10 @@ export function StepSummary() {
     );
   }
 
-  if (error) {
+  if (calcError) {
     return (
       <div className="text-center py-12">
-        <p className="text-red-600 mb-4">{error}</p>
+        <p className="text-red-600 mb-4">{calcError}</p>
         <Button
           onClick={() => window.location.reload()}
           className="bg-primary hover:bg-primary/90"
@@ -270,6 +536,18 @@ export function StepSummary() {
               Download PDF
             </Button>
           </div>
+        </div>
+
+        {/* Restart centered at very bottom */}
+        <div className="pt-6 flex justify-center">
+          <Button
+            variant="ghost"
+            onClick={handleStartOver}
+            className="text-black"
+          >
+            <RotateCcw className="w-4 h-4 mr-2" />
+            Restart
+          </Button>
         </div>
       </div>
     </div>

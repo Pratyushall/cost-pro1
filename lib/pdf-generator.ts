@@ -1,6 +1,8 @@
+// lib/pdf-generator.ts
 import type { EstimatorState, PriceRange } from "./types";
 import { computeExactBreakdown } from "./calc-exact";
 
+/** Shape passed in by your caller (kept same as earlier) */
 interface PDFData {
   state: EstimatorState;
   calculation: {
@@ -14,32 +16,43 @@ interface PDFData {
   };
 }
 
-// remove any explicit prices/rates from the details column
+/** Remove explicit prices/rates etc. from the details column */
 function sanitizeDetails(input?: string): string {
   if (!input) return "";
   let s = input;
 
-  // remove currency snippets like "₹12,345" or "₹2050"
+  // Remove "₹12,345.00" / "₹2050"
   s = s.replace(/₹\s*[0-9,]+(?:\.\d+)?/g, "");
 
-  // remove "× ..." fragments (e.g., "120 sqft × ..." -> "120 sqft")
+  // Remove "× ..." fragments (e.g., "120 sqft × ..." -> "120 sqft")
   s = s.replace(/\s*×\s*[^•]+/g, "");
 
-  // collapse extra spaces and tidy separators
+  // Tidy bullets/spaces
   s = s
     .replace(/\s{2,}/g, " ")
     .replace(/\s*•\s*/g, " • ")
     .trim();
 
-  // remove dangling "•" at ends
+  // Remove dangling bullets
   s = s.replace(/^•\s*/, "").replace(/\s*•\s*$/, "");
 
   return s;
 }
 
+/** Create the PDF as an HTML blob */
 export async function generatePDF(data: PDFData): Promise<Blob> {
   const { state } = data;
   const exact = computeExactBreakdown(state);
+
+  type CatKey =
+    | "Single Line Items"
+    | "Bedrooms"
+    | "Living Room"
+    | "Kitchen"
+    | "Pooja Room"
+    | "Add-ons";
+
+  type Row = (typeof exact.lines)[number];
 
   const money = (n: number) =>
     new Intl.NumberFormat("en-IN", {
@@ -48,28 +61,69 @@ export async function generatePDF(data: PDFData): Promise<Blob> {
       maximumFractionDigits: 0,
     }).format(n);
 
-  const cat = (
-    name:
-      | "Single Line Items"
-      | "Bedrooms"
-      | "Living Room"
-      | "Kitchen"
-      | "Pooja Room"
-      | "Add-ons"
-  ) => exact.lines.filter((l) => l.category === name);
+  const cat = (name: CatKey) => exact.lines.filter((l) => l.category === name);
 
-  const section = (
-    title: string,
-    key:
-      | "Single Line Items"
-      | "Bedrooms"
-      | "Living Room"
-      | "Kitchen"
-      | "Pooja Room"
-      | "Add-ons"
-  ) => {
-    const rows = cat(key);
+  // -----------------------------
+  // Bedrooms: group by room name
+  // -----------------------------
+  // Expected labels like:
+  //  - "Master Bedroom TV Unit"
+  //  - "Children Bedroom Wardrobe"
+  //  - "Bedroom 2 Study Table"
+  // We split into { room: "Master Bedroom", unit: "TV Unit" }
+  const parseBedroomItem = (item: string) => {
+    const s = item.replace(/\s+/g, " ").trim();
+
+    // "<something> bedroom <rest>"
+    const m = s.match(/^(.*?\bbedroom)\s+(.*)$/i);
+    if (m) {
+      const room = m[1]
+        .toLowerCase()
+        .replace(/\b\w/g, (c) => c.toUpperCase())
+        .replace(/\s+/g, " ")
+        .trim();
+      const unit = m[2].trim();
+      return { room, unit };
+    }
+
+    // "bedroom <n> <rest>"
+    const m2 = s.match(/^(bedroom\s*\d+)\s+(.*)$/i);
+    if (m2) {
+      const room = m2[1].toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+      const unit = m2[2].trim();
+      return { room, unit };
+    }
+
+    // Fallback
+    return { room: "Bedroom", unit: s };
+  };
+
+  const bedroomRows = cat("Bedrooms");
+  const bedroomsByRoom = bedroomRows.reduce<Record<string, Row[]>>(
+    (acc, row) => {
+      const { room, unit } = parseBedroomItem(row.item);
+      const cloned: Row = { ...row, item: unit };
+      (acc[room] ??= []).push(cloned);
+      return acc;
+    },
+    {}
+  );
+
+  // -----------------------------
+  // Summary counters
+  // -----------------------------
+  const allRows = exact.lines;
+  const bedroomsCount = Object.keys(bedroomsByRoom).length;
+  const wardrobesCount = allRows.filter((r) => /wardrobe/i.test(r.item)).length;
+  const addonsCount = cat("Add-ons").length;
+  const totalUnitsCount = allRows.length;
+
+  // -----------------------------
+  // Helpers: render tables
+  // -----------------------------
+  const sectionTable = (title: string, rows: Row[]) => {
     if (!rows.length) return "";
+    const subtotal = rows.reduce((s, r) => s + r.amount, 0);
     return `
       <h3>${title}</h3>
       <table class="t">
@@ -85,25 +139,56 @@ export async function generatePDF(data: PDFData): Promise<Blob> {
           ${rows
             .map(
               (r) => `
-            <tr>
-              <td>${r.item}</td>
-              <td>${r.pkg}</td>
-              <td>${sanitizeDetails(r.details)}</td>
-              <td class="r">${money(r.amount)}</td>
-            </tr>`
+              <tr>
+                <td>${r.item}</td>
+                <td>${r.pkg}</td>
+                <td>${sanitizeDetails(r.details)}</td>
+                <td class="r">${money(r.amount)}</td>
+              </tr>`
             )
             .join("")}
           <tr class="sub">
             <td colspan="3" class="r"><strong>Subtotal</strong></td>
-            <td class="r"><strong>${money(
-              exact.totalsByCategory[key]
-            )}</strong></td>
+            <td class="r"><strong>${money(subtotal)}</strong></td>
           </tr>
         </tbody>
       </table>
     `;
   };
 
+  const bedroomsSection = () => {
+    if (!bedroomRows.length) return "";
+    const roomsHtml = Object.entries(bedroomsByRoom)
+      .map(([room, rows]) => sectionTable(room, rows))
+      .join("");
+    const subtotal = bedroomRows.reduce((s, r) => s + r.amount, 0);
+    return `
+      <h3>Bedrooms</h3>
+      ${roomsHtml}
+      <table class="t">
+        <tbody>
+          <tr class="sub">
+            <td colspan="3" class="r"><strong>Bedrooms Subtotal</strong></td>
+            <td class="r"><strong>${money(subtotal)}</strong></td>
+          </tr>
+        </tbody>
+      </table>
+    `;
+  };
+
+  // Other categories (unchanged behavior)
+  const singleLineItems = sectionTable(
+    "Single Line Items",
+    cat("Single Line Items")
+  );
+  const livingSection = sectionTable("Living Room", cat("Living Room"));
+  const kitchenSection = sectionTable("Kitchen", cat("Kitchen"));
+  const poojaSection = sectionTable("Pooja Room", cat("Pooja Room"));
+  const addonsSection = sectionTable("Add-ons", cat("Add-ons"));
+
+  // -----------------------------
+  // HTML document
+  // -----------------------------
   const html = `
   <!doctype html><html><head><meta charset="utf-8"/>
   <title>Interior Estimate (${state.basics.bhk.toUpperCase()} • ${
@@ -125,6 +210,10 @@ export async function generatePDF(data: PDFData): Promise<Blob> {
     .t .sub td{border-top:1px solid #e5e5e5; background:#fafafa}
     .gt{margin-top:16px; background:#f59e0b; padding:12px; border-radius:8px; display:flex; justify-content:space-between; font-weight:800}
     .note{font-size:12px; color:#6b7280; margin-top:12px}
+    .summary{display:grid; grid-template-columns:repeat(4,1fr); gap:12px; background:#f8fafc; padding:12px; border-radius:8px; margin-top:8px}
+    .pill{background:#fff; border:1px solid #e5e7eb; padding:10px; border-radius:10px}
+    .pill .label{font-size:12px; color:#6b7280}
+    .pill .value{font-weight:700; font-size:16px; margin-top:2px}
     @media print { body{padding:24px} }
   </style>
   </head><body>
@@ -146,13 +235,22 @@ export async function generatePDF(data: PDFData): Promise<Blob> {
       }</div></div>
     </div>
 
+    <!-- Summary FIRST -->
+    <h2>Summary</h2>
+    <div class="summary">
+      <div class="pill"><div class="label">Bedrooms</div><div class="value">${bedroomsCount}</div></div>
+      <div class="pill"><div class="label">Wardrobes</div><div class="value">${wardrobesCount}</div></div>
+      <div class="pill"><div class="label">Total Units</div><div class="value">${totalUnitsCount}</div></div>
+      <div class="pill"><div class="label">Add-ons</div><div class="value">${addonsCount}</div></div>
+    </div>
+
     <h2>Breakdown (Exact totals — component rates hidden)</h2>
-    ${section("Single Line Items", "Single Line Items")}
-    ${section("Bedrooms", "Bedrooms")}
-    ${section("Living Room", "Living Room")}
-    ${section("Kitchen", "Kitchen")}
-    ${section("Pooja Room", "Pooja Room")}
-    ${section("Add-ons", "Add-ons")}
+    ${singleLineItems}
+    ${bedroomsSection()}
+    ${livingSection}
+    ${kitchenSection}
+    ${poojaSection}
+    ${addonsSection}
 
     <div class="gt"><span>Grand Total</span><span>${money(
       exact.grandTotal
@@ -164,6 +262,7 @@ export async function generatePDF(data: PDFData): Promise<Blob> {
   return new Blob([html], { type: "text/html" });
 }
 
+/** Download helper */
 export function downloadPDF(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -175,6 +274,7 @@ export function downloadPDF(blob: Blob, filename: string) {
   URL.revokeObjectURL(url);
 }
 
+/** Open in a new tab and trigger print */
 export function openPDFForPrint(blob: Blob) {
   const url = URL.createObjectURL(blob);
   const w = window.open(url, "_blank");

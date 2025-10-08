@@ -1,45 +1,47 @@
 // app/api/otp/verify/route.ts
 import { NextResponse } from "next/server";
-import { verifyToken, matchesCode } from "@/lib/otp";
-import crypto from "crypto";
+import { verifyOtp } from "@/lib/otp";
 
-const SESSION_TTL = 60 * 60; // 1 hour
+function toE164(input: string) {
+  let p = (input || "").replace(/[^\d+]/g, "");
+  if (p.startsWith("0")) p = p.replace(/^0+/, "");
+  if (!p.startsWith("+")) p = `+91${p}`;
+  return p;
+}
 
 export async function POST(req: Request) {
   try {
-    const { token, to, code } = await req.json();
-    if (!token || !to || !code)
+    const { phone, otp } = await req.json();
+    const id = toE164(phone || "");
+    if (!/^\+?\d{10,15}$/.test(id)) {
       return NextResponse.json(
-        { ok: false, error: "Invalid input" },
+        { ok: false, error: "bad_phone" },
         { status: 400 }
       );
-
-    const payload = verifyToken(token);
-    if (!payload)
+    }
+    if (!/^\d{6}$/.test(otp || "")) {
       return NextResponse.json(
-        { ok: false, error: "OTP expired or invalid" },
+        { ok: false, error: "bad_otp" },
         { status: 400 }
       );
-    if (!matchesCode(payload, to, code))
+    }
+
+    const result = await verifyOtp(id, otp);
+    if (!result.ok) {
       return NextResponse.json(
-        { ok: false, error: "Incorrect code" },
+        {
+          ok: false,
+          error: result.reason,
+          remaining: (result as any).remaining ?? 0,
+        },
         { status: 400 }
       );
+    }
 
-    // create a lightweight, signed session proof (stateless)
-    const now = Math.floor(Date.now() / 1000);
-    const sess = { to, exp: now + SESSION_TTL, v: 1 };
-    const body = Buffer.from(JSON.stringify(sess)).toString("base64url");
-    const sig = crypto
-      .createHmac("sha256", process.env.OTP_SIGNING_SECRET || "dev-secret")
-      .update(body)
-      .digest("base64url");
-    const session = `${body}.${sig}`;
-
-    return NextResponse.json({ ok: true, session, exp: sess.exp });
-  } catch {
+    return NextResponse.json({ ok: true });
+  } catch (e: any) {
     return NextResponse.json(
-      { ok: false, error: "Verification failed" },
+      { ok: false, error: "server_error", detail: String(e?.message || e) },
       { status: 500 }
     );
   }
