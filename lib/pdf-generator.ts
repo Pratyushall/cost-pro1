@@ -39,7 +39,6 @@ function sanitizeDetails(input?: string): string {
   return s;
 }
 
-/** Create the PDF as an HTML blob */
 export async function generatePDF(data: PDFData): Promise<Blob> {
   const { state } = data;
   const exact = computeExactBreakdown(state);
@@ -63,18 +62,9 @@ export async function generatePDF(data: PDFData): Promise<Blob> {
 
   const cat = (name: CatKey) => exact.lines.filter((l) => l.category === name);
 
-  // -----------------------------
-  // Bedrooms: group by room name
-  // -----------------------------
-  // Expected labels like:
-  //  - "Master Bedroom TV Unit"
-  //  - "Children Bedroom Wardrobe"
-  //  - "Bedroom 2 Study Table"
-  // We split into { room: "Master Bedroom", unit: "TV Unit" }
   const parseBedroomItem = (item: string) => {
     const s = item.replace(/\s+/g, " ").trim();
 
-    // "<something> bedroom <rest>"
     const m = s.match(/^(.*?\bbedroom)\s+(.*)$/i);
     if (m) {
       const room = m[1]
@@ -86,7 +76,6 @@ export async function generatePDF(data: PDFData): Promise<Blob> {
       return { room, unit };
     }
 
-    // "bedroom <n> <rest>"
     const m2 = s.match(/^(bedroom\s*\d+)\s+(.*)$/i);
     if (m2) {
       const room = m2[1].toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
@@ -176,7 +165,6 @@ export async function generatePDF(data: PDFData): Promise<Blob> {
     `;
   };
 
-  // Other categories (unchanged behavior)
   const singleLineItems = sectionTable(
     "Single Line Items",
     cat("Single Line Items")
@@ -186,9 +174,6 @@ export async function generatePDF(data: PDFData): Promise<Blob> {
   const poojaSection = sectionTable("Pooja Room", cat("Pooja Room"));
   const addonsSection = sectionTable("Add-ons", cat("Add-ons"));
 
-  // -----------------------------
-  // HTML document
-  // -----------------------------
   const html = `
   <!doctype html><html><head><meta charset="utf-8"/>
   <title>Interior Estimate (${state.basics.bhk.toUpperCase()} • ${

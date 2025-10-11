@@ -1,8 +1,7 @@
-// Hidden pricing configuration - NEVER expose to client
 export const rates = {
   singleLinePerSqft: {
-    Premium: { falseCeiling: 900, ceilingPainting: 200, electricalWiring: 250 },
-    Luxury: { falseCeiling: 1250, ceilingPainting: 300, electricalWiring: 350 },
+    Premium: { falseCeiling: 100, ceilingPainting: 200, electricalWiring: 250 },
+    Luxury: { falseCeiling: 150, ceilingPainting: 300, electricalWiring: 350 },
   },
 
   wardrobeArea: {

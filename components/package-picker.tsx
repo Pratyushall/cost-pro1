@@ -3,11 +3,11 @@
 import type { Package } from "@/lib/types";
 
 interface PackagePickerProps {
-  value?: Package | null; // per-item override (may be null)
-  currentPackage?: Package | null; // legacy prop; if present, used before global
-  globalPkg: Package; // global package from Step 1
+  value?: Package | null;
+  currentPackage?: Package | null;
+  globalPkg: Package;
   onChange?: (next: Package | null) => void;
-  onPackageChange?: (pkg: Package | null) => void; // legacy handler
+  onPackageChange?: (pkg: Package | null) => void;
   compact?: boolean;
   itemId?: string;
   itemName?: string;
@@ -29,18 +29,16 @@ export function PackagePicker({
   const analyticsId = itemId ?? itemName;
 
   const base =
-    "px-2 py-1 rounded text-xs border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-yellow-400";
+    "px-2 py-1 rounded text-xs border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-primary";
 
-  const selectedCls = "bg-yellow-400 text-black border-yellow-400";
+  const selectedCls = "bg-primary text-primary-foreground border-primary";
   const unselectedCls =
-    "bg-transparent text-yellow-700 border-yellow-400 hover:bg-yellow-50";
+    "bg-transparent text-primary border-primary hover:bg-primary/10 dark:hover:bg-primary/20";
 
   const handleChange = (newPkg: Package) => {
-    // store null if user chooses the same as global (i.e., no override)
     const override: Package | null = newPkg === globalPkg ? null : newPkg;
     actualOnChange?.(override);
 
-    // optional GA event you already had
     if (
       override &&
       analyticsId &&

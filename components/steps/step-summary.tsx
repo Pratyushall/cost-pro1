@@ -10,9 +10,37 @@ import { generatePDF, openPDFForPrint } from "@/lib/pdf-generator";
 import type { PriceRange } from "@/lib/types";
 import { computeExactBreakdown } from "@/lib/calc-exact";
 
+// ---------- Config ----------
 const DUMMY_MODE =
   typeof window !== "undefined" && process.env.NEXT_PUBLIC_OTP_DUMMY === "true";
 const DUMMY_OTP = "000000";
+
+// Category weights used to derive masked fallbacks from grand total
+const CATEGORY_WEIGHTS: Record<
+  "singleLine" | "bedrooms" | "living" | "kitchen" | "pooja" | "addons",
+  number
+> = {
+  singleLine: 0.12,
+  bedrooms: 0.33,
+  living: 0.1,
+  kitchen: 0.28,
+  pooja: 0.04,
+  addons: 0.13,
+};
+
+// Mask number like: 2xxx668x (keeps first digit + 1–2 tail digits, X in middle)
+function maskAmount(n: number): string {
+  const raw = Math.max(0, Math.round(n)).toString();
+  if (raw.length <= 3) return raw.replace(/.(?=..)/g, "x");
+  const first = raw[0];
+  const tailLen = raw.length >= 7 ? 2 : 1;
+  const tail = raw.slice(-tailLen);
+  const middleXs = "x".repeat(raw.length - (1 + tailLen));
+  return `${first}${middleXs}${tail}`;
+}
+function formatMaskedINR(n: number): string {
+  return `₹ ${maskAmount(n)}`;
+}
 
 interface CalculationResult {
   singleLine: PriceRange;
@@ -28,8 +56,10 @@ export function StepSummary() {
   const { basics, single, rooms, addons, setCurrentStep, reset } =
     useEstimatorStore();
 
-  // ---------- OTP gate state ----------
-  const [phone, setPhone] = useState<string>("");
+  // ---------- OTP gate ----------
+  const [name, setName] = useState<string>(""); // REQUIRED
+  const [email, setEmail] = useState<string>(""); // optional
+  const [phone, setPhone] = useState<string>(""); // digits only UI
   const [otp, setOtp] = useState<string>("");
   const [otpSent, setOtpSent] = useState(false);
   const [otpSending, setOtpSending] = useState(false);
@@ -37,37 +67,56 @@ export function StepSummary() {
   const [verified, setVerified] = useState(false);
   const [otpMsg, setOtpMsg] = useState<string | null>(null);
 
-  // Consents under phone input
   const [consentConnect, setConsentConnect] = useState(false);
   const [consentCall, setConsentCall] = useState(false);
 
-  // Optional prefill
+  // Prefill if available from earlier steps
   useEffect(() => {
     // @ts-ignore
-    const prefilled =
+    const pName =
+      (rooms as any)?.contact?.name || (addons as any)?.contact?.name || "";
+    if (pName && !name) setName(pName);
+
+    // @ts-ignore
+    const pEmail =
+      (rooms as any)?.contact?.email || (addons as any)?.contact?.email || "";
+    if (pEmail && !email) setEmail(pEmail);
+
+    // @ts-ignore
+    const pPhone =
       (rooms as any)?.contact?.phone || (addons as any)?.contact?.phone || "";
-    if (prefilled && !phone) setPhone(prefilled);
-  }, [rooms, addons, phone]);
+    if (pPhone && !phone) setPhone(pPhone.replace(/\D/g, "")); // keep digits only
+  }, [rooms, addons, name, email, phone]);
 
-  const phoneE164 = useMemo(() => {
-    let p = phone.replace(/[^\d+]/g, "");
-    if (p.startsWith("0")) p = p.replace(/^0+/, "");
-    if (!p.startsWith("+")) p = `+91${p}`;
-    return p;
-  }, [phone]);
+  // Digits-only sanitized phone value (no +91 prefixing)
+  const phoneDigits = useMemo(() => phone.replace(/\D/g, ""), [phone]);
 
-  // ---- HERE: sendWaOtp (includes dummy mode) ----
+  // Simple validators
+  const nameValid = name.trim().length > 0;
+  const emailValid =
+    email.trim().length === 0 ||
+    // very light email check; keep it permissive
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+  const phoneValid = /^\d{10,15}$/.test(phoneDigits);
+
   async function sendWaOtp() {
     try {
       setOtpMsg(null);
 
-      // Basic phone validation
-      if (!/^\+?\d{10,15}$/.test(phoneE164)) {
-        setOtpMsg("Please enter a valid phone number");
+      // Require name always (as requested)
+      if (!nameValid) {
+        setOtpMsg("Please enter your name.");
+        return;
+      }
+      if (!emailValid) {
+        setOtpMsg("Please enter a valid email address, or leave it blank.");
+        return;
+      }
+      if (!phoneValid) {
+        setOtpMsg("Please enter a valid phone number (10–15 digits).");
         return;
       }
 
-      // Dummy dev bypass
       if (DUMMY_MODE) {
         setOtpSent(true);
         setOtpMsg(`Dev mode: use ${DUMMY_OTP} to continue.`);
@@ -78,7 +127,13 @@ export function StepSummary() {
       const r = await fetch("/api/otp/wa/request", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: phoneE164, consentConnect, consentCall }),
+        body: JSON.stringify({
+          name: name.trim(),
+          email: email.trim() || undefined,
+          phone: phoneDigits, // send digits-only; no +91
+          consentConnect,
+          consentCall,
+        }),
       });
       const j = await r.json();
       if (!r.ok || !j.ok) {
@@ -90,7 +145,9 @@ export function StepSummary() {
         try {
           (analytics as any)?.otpRequested?.({
             method: "whatsapp",
-            phone: phoneE164,
+            name: name.trim(),
+            email: email.trim() || undefined,
+            phone: phoneDigits,
             consentConnect,
             consentCall,
           });
@@ -103,15 +160,23 @@ export function StepSummary() {
     }
   }
 
-  // ---- HERE: verifyWaOtp (includes dummy mode) ----
   async function verifyWaOtp() {
     try {
       setOtpMsg(null);
 
-      // Dummy dev bypass
       if (DUMMY_MODE && otp === DUMMY_OTP) {
         setVerified(true);
         setOtpMsg(null);
+        try {
+          (analytics as any)?.otpVerified?.({
+            method: "whatsapp",
+            name: name.trim(),
+            email: email.trim() || undefined,
+            phone: phoneDigits,
+            consentConnect,
+            consentCall,
+          });
+        } catch {}
         return;
       }
 
@@ -124,7 +189,7 @@ export function StepSummary() {
       const r = await fetch("/api/otp/verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: phoneE164, otp }),
+        body: JSON.stringify({ phone: phoneDigits, otp }), // match request format
       });
       const j = await r.json();
       if (!r.ok || !j.ok) {
@@ -143,7 +208,9 @@ export function StepSummary() {
         try {
           (analytics as any)?.otpVerified?.({
             method: "whatsapp",
-            phone: phoneE164,
+            name: name.trim(),
+            email: email.trim() || undefined,
+            phone: phoneDigits,
             consentConnect,
             consentCall,
           });
@@ -157,7 +224,7 @@ export function StepSummary() {
     }
   }
 
-  // ---------- Calculation (runs only AFTER verified) ----------
+  // ---------- Calculation (after verify) ----------
   const [calculation, setCalculation] = useState<CalculationResult | null>(
     null
   );
@@ -166,7 +233,6 @@ export function StepSummary() {
 
   useEffect(() => {
     if (!verified) return;
-
     const calculateEstimate = async () => {
       try {
         setLoading(true);
@@ -189,7 +255,7 @@ export function StepSummary() {
         const result = await resp.json();
 
         if (result.success) {
-          setCalculation(result.ranges);
+          setCalculation(result.ranges as CalculationResult);
           analytics.estimateGenerated(basics, result.ranges.grandTotal);
         } else {
           throw new Error(result.error || "Calculation failed");
@@ -240,7 +306,7 @@ export function StepSummary() {
 
   // ----------- OTP Gate FIRST -----------
   if (!verified) {
-    const phoneValid = /^\+?\d{10,15}$/.test(phoneE164);
+    const canSend = nameValid && emailValid && phoneValid;
 
     return (
       <div className="max-w-xl mx-auto">
@@ -250,24 +316,48 @@ export function StepSummary() {
               Verify to view your estimate
             </CardTitle>
             <p className="text-sm text-gray-600">
-              Enter your phone number to receive a one-time code on WhatsApp.
-              After verification, your estimate summary will be displayed.
+              Enter your details to receive a one-time code on WhatsApp. After
+              verification, your estimate summary will be displayed.
             </p>
           </CardHeader>
           <CardContent>
+            {/* Name (required) */}
+            <label className="block text-sm text-gray-700 mb-1">Name</label>
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g., Priya Sharma"
+              className="mb-3 w-full rounded-md border border-gray-300 px-3 py-2 text-black outline-none focus:ring-2 focus:ring-primary"
+            />
+
+            {/* Email (optional) */}
             <label className="block text-sm text-gray-700 mb-1">
-              Phone number
+              Email (optional)
+            </label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+              className="mb-3 w-full rounded-md border border-gray-300 px-3 py-2 text-black outline-none focus:ring-2 focus:ring-primary"
+            />
+
+            {/* Phone (digits only; no +91) */}
+            <label className="block text-sm text-gray-700 mb-1">
+              Phone number (for WhatsApp OTP)
             </label>
             <div className="flex gap-2">
               <input
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="+91 98765 43210"
+                onChange={(e) => setPhone(e.target.value.replace(/\D/g, ""))}
+                placeholder="9876543210"
+                inputMode="numeric"
+                pattern="\d*"
                 className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-black outline-none focus:ring-2 focus:ring-primary"
               />
               <Button
                 onClick={sendWaOtp}
-                disabled={otpSending || !phoneValid}
+                disabled={otpSending || !canSend}
                 className="bg-primary hover:bg-primary/90 text-primary-foreground"
               >
                 {otpSending ? (
@@ -277,7 +367,7 @@ export function StepSummary() {
               </Button>
             </div>
 
-            {/* Consents right under phone field */}
+            {/* Consents */}
             <div className="mt-4 space-y-2">
               <label className="flex items-start gap-3">
                 <input
@@ -413,6 +503,17 @@ export function StepSummary() {
     );
   }
 
+  const categories = [
+    { key: "singleLine", label: "Single Line Items" },
+    { key: "bedrooms", label: "Bedrooms" },
+    { key: "living", label: "Living Room" },
+    { key: "kitchen", label: "Kitchen" },
+    { key: "pooja", label: "Pooja Room" },
+    { key: "addons", label: "Add-ons" },
+  ] as const;
+
+  const gtAvg = (calculation.grandTotal.low + calculation.grandTotal.high) / 2;
+
   return (
     <div className="space-y-6">
       <CardHeader className="px-0">
@@ -465,51 +566,39 @@ export function StepSummary() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {[
-                {
-                  key: "singleLine",
-                  label: "Single Line Items",
-                  range: calculation.singleLine,
-                },
-                {
-                  key: "bedrooms",
-                  label: "Bedrooms",
-                  range: calculation.bedrooms,
-                },
-                {
-                  key: "living",
-                  label: "Living Room",
-                  range: calculation.living,
-                },
-                {
-                  key: "kitchen",
-                  label: "Kitchen",
-                  range: calculation.kitchen,
-                },
-                { key: "pooja", label: "Pooja Room", range: calculation.pooja },
-                { key: "addons", label: "Add-ons", range: calculation.addons },
-              ].map(({ key, label, range }) => (
-                <div
-                  key={key}
-                  className="flex justify-between items-center py-2 border-b border-gray-100 last:border-b-0"
-                >
-                  <span className="text-black font-medium">{label}</span>
-                  <span className="text-black font-medium">
-                    {range.low === 0 && range.high === 0
-                      ? "Not included"
-                      : `≈ ${formatPrice(range.low)} - ${formatPrice(
-                          range.high
-                        )}`}
-                  </span>
-                </div>
-              ))}
+              {categories.map(({ key, label }) => {
+                const range = calculation[key];
+                const isZero = range.low === 0 && range.high === 0;
+                const fallback = Math.max(
+                  0,
+                  Math.round(gtAvg * CATEGORY_WEIGHTS[key])
+                );
+
+                const display = isZero
+                  ? // masked single value when category not included
+                    formatMaskedINR(fallback)
+                  : // normal range (unmasked for categories that have values)
+                    `≈ ${formatPrice(range.low)} - ${formatPrice(range.high)}`;
+
+                return (
+                  <div
+                    key={key}
+                    className="flex justify-between items-center py-2 border-b border-gray-100 last:border-b-0"
+                  >
+                    <span className="text-black font-medium">{label}</span>
+                    <span className="text-black font-medium">{display}</span>
+                  </div>
+                );
+              })}
+
+              {/* Grand Total — masked range */}
               <div className="flex justify-between items-center py-3 border-t-2 border-gray-300 mt-4">
                 <span className="text-xl font-bold text-black">
                   Grand Total
                 </span>
                 <span className="text-xl font-bold text-primary">
-                  ≈ {formatPrice(calculation.grandTotal.low)} -{" "}
-                  {formatPrice(calculation.grandTotal.high)}
+                  ≈ {formatMaskedINR(calculation.grandTotal.low)} -{" "}
+                  {formatMaskedINR(calculation.grandTotal.high)}
                 </span>
               </div>
             </div>
@@ -538,7 +627,7 @@ export function StepSummary() {
           </div>
         </div>
 
-        {/* Restart centered at very bottom */}
+        {/* Restart */}
         <div className="pt-6 flex justify-center">
           <Button
             variant="ghost"
