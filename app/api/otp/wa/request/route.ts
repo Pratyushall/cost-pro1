@@ -51,18 +51,13 @@ export async function POST(req: Request) {
     const otp = genOtp(6);
     await storeOtp(to, otp);
 
-    // ---- send via AiSensy (template) ----
-    // NOTE: Match keys to what your AiSensy API page shows.
-    // Common shape:
     const payload = {
-      template_name: TEMPLATE, // e.g. "otp_auth"
-      language_code: LANG, // e.g. "en" or "en_US"
-      phone_number: to, // some accounts use "to" instead
-      // If your template uses {{1}} in the BODY, pass the OTP as the first parameter
-      parameters: [
-        { type: "text", text: otp }, // or { name: "code", value: otp } if named variables
-      ],
-      broadcast_name: "OTP", // optional label
+      template_name: TEMPLATE,
+      language_code: LANG,
+      phone_number: to,
+
+      parameters: [{ type: "text", text: otp }],
+      broadcast_name: "OTP",
     };
 
     const aiRes = await fetch(SEND_URL, {
@@ -78,9 +73,6 @@ export async function POST(req: Request) {
       const detail = await aiRes.text().catch(() => "");
       return json({ ok: false, error: "send_failed", detail }, 502);
     }
-
-    // Optionally inspect response JSON for message id
-    // const resJson = await aiRes.json().catch(() => ({}));
 
     return json({ ok: true, expiresInSec: ttlSec });
   } catch (e: any) {
