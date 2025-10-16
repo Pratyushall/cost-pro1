@@ -238,14 +238,6 @@ export function StepAddons() {
                         <Label className="text-base font-semibold text-foreground">
                           {ADDON_LABELS[key]}
                         </Label>
-                        {isOverridden && (
-                          <Badge
-                            variant="secondary"
-                            className="ml-2 text-xs bg-accent/20 text-accent border-accent/30"
-                          >
-                            Overridden
-                          </Badge>
-                        )}
                       </div>
                     </div>
                   </div>

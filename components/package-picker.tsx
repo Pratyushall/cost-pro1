@@ -29,11 +29,7 @@ export function PackagePicker({
 
   return (
     <div className="flex items-center gap-2">
-      {isOverridden && (
-        <Badge variant="secondary" className="text-xs">
-          Overridden
-        </Badge>
-      )}
+      {isOverridden && <Badge variant="secondary" className="text-xs"></Badge>}
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -61,18 +57,6 @@ export function PackagePicker({
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-
-      {isOverridden && (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => onPackageChange(undefined)}
-          className="h-8 px-2 text-gray-600 hover:text-black"
-          title="Reset to Global"
-        >
-          <RotateCcw className="h-4 w-4" />
-        </Button>
-      )}
     </div>
   );
 }

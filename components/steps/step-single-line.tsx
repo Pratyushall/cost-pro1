@@ -367,29 +367,7 @@ export function StepSingleLine() {
                       <Label className="cursor-pointer text-lg font-semibold text-foreground">
                         {getItemLabel(key)}
                       </Label>
-                      {isOverridden && (
-                        <Badge
-                          variant="secondary"
-                          className="text-xs bg-accent/20 text-accent border-accent/30"
-                        >
-                          Overridden
-                        </Badge>
-                      )}
                     </div>
-                    {isOverridden && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="hover:bg-secondary/10 text-muted-foreground hover:text-foreground"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handlePackageOverride(key, "reset");
-                        }}
-                      >
-                        <X className="h-4 w-4 mr-1" />
-                        Reset to Global
-                      </Button>
-                    )}
                   </div>
 
                   {/* Controls - only show when enabled */}
