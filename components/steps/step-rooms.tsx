@@ -1,6 +1,6 @@
-// components/steps/step-rooms.tsx
 "use client";
 
+import { useEffect, useState, useCallback } from "react";
 import { useEstimatorStore } from "@/store/estimator";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,782 +13,1587 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PackagePicker } from "@/components/package-picker";
-import { ArrowLeft } from "lucide-react";
+import { analytics } from "@/lib/analytics";
+import {
+  prefillRoomsForBHK,
+  applyRoomPreset,
+  normalizeRoomSize,
+  getSuggestedKitchenAccessories,
+  validateRoomSize,
+} from "@/lib/room-utils";
 import type {
   BedroomSize,
   LivingSize,
   KitchenSize,
   KitchenType,
   PoojaSize,
+  BedroomRole,
+  RoomPreset,
+  TVPanelPreset,
 } from "@/lib/types";
+import {
+  ArrowLeft,
+  Plus,
+  Trash2,
+  ChevronDown,
+  AlertCircle,
+  RotateCcw,
+} from "lucide-react";
 
 export function StepRooms() {
-  const { rooms, updateRooms, setCurrentStep, basics } = useEstimatorStore();
+  const {
+    rooms,
+    setRooms,
+    updateBedroom,
+    addBedroom,
+    removeBedroom,
+    setCurrentStep,
+    basics,
+    resetStore,
+  } = useEstimatorStore();
+  const [startTime] = useState(Date.now());
+  const [customSizes, setCustomSizes] = useState<Record<string, string>>({});
+  const [sizeWarnings, setSizeWarnings] = useState<Record<string, string>>({});
 
-  const updateRoom = (roomType: keyof typeof rooms, updates: any) => {
-    updateRooms(roomType, updates);
+  // State for selected presets
+  const [selectedPresets, setSelectedPresets] = useState<
+    Record<string, RoomPreset | null>
+  >({});
+  const [selectedTVPreset, setSelectedTVPreset] =
+    useState<TVPanelPreset | null>(null);
+
+  // Prefill rooms based on BHK on first load
+  useEffect(() => {
+    if (!rooms.prefilled && basics.bhk) {
+      const prefilled = prefillRoomsForBHK(basics.bhk);
+      setRooms(prefilled);
+      analytics.roomsStepViewed();
+    } else if (!rooms.prefilled) {
+      analytics.roomsStepViewed();
+    }
+  }, [basics.bhk, rooms.prefilled, setRooms]);
+
+  // Debounced autosave
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      localStorage.setItem("estimator_rooms", JSON.stringify(rooms));
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [rooms]);
+
+  const handleBedroomSizeChange = useCallback(
+    (id: string, size: BedroomSize, customValue?: string) => {
+      const bedroom = rooms.bedrooms.find((br) => br.id === id);
+      if (!bedroom) return;
+
+      if (size === "custom" && customValue) {
+        const sqft = normalizeRoomSize(customValue);
+        const validation = validateRoomSize(sqft, "bedroom");
+        if (validation.warning) {
+          setSizeWarnings((prev) => ({
+            ...prev,
+            [`bedroom-${id}`]: validation.warning!,
+          }));
+        } else {
+          setSizeWarnings((prev) => {
+            const updated = { ...prev };
+            delete updated[`bedroom-${id}`];
+            return updated;
+          });
+        }
+        updateBedroom(id, { size, customSize: customValue });
+        analytics.roomSizeChanged(bedroom.role, `custom:${customValue}`);
+      } else {
+        updateBedroom(id, { size, customSize: undefined });
+        analytics.roomSizeChanged(bedroom.role, size);
+      }
+    },
+    [rooms.bedrooms, updateBedroom]
+  );
+
+  const handleRoomPreset = useCallback(
+    (id: string, preset: RoomPreset) => {
+      const bedroom = rooms.bedrooms.find((br) => br.id === id);
+      if (!bedroom) return;
+
+      const updatedItems = applyRoomPreset(bedroom.items, preset);
+      updateBedroom(id, { items: updatedItems });
+      setSelectedPresets((prev) => ({ ...prev, [id]: preset })); // Track selected preset
+      analytics.roomPresetClicked(bedroom.role, preset);
+    },
+    [rooms.bedrooms, updateBedroom]
+  );
+
+  const handleTVPanelPreset = useCallback(
+    (preset: TVPanelPreset) => {
+      const presetValues = {
+        Small: 40,
+        Medium: 60,
+        Feature: 100,
+      };
+      setRooms({
+        living: {
+          ...rooms.living,
+          tvPanel: {
+            ...rooms.living.tvPanel,
+            enabled: true,
+            panelSqft: presetValues[preset],
+          },
+        },
+      });
+      setSelectedTVPreset(preset); // Track selected preset
+      analytics.tvPanelPresetClicked(preset);
+    },
+    [rooms.living, setRooms]
+  );
+
+  const handleKitchenTypeOrSizeChange = useCallback(
+    (type?: KitchenType, size?: KitchenSize) => {
+      const newType = type || rooms.kitchen.type;
+      const newSize = size || rooms.kitchen.size;
+
+      const suggested = getSuggestedKitchenAccessories(newType, newSize);
+
+      setRooms({
+        kitchen: {
+          ...rooms.kitchen,
+          ...(type && { type }),
+          ...(size && { size }),
+          tandemBaskets: {
+            ...rooms.kitchen.tandemBaskets,
+            qty: suggested.tandemBaskets,
+            enabled: suggested.tandemBaskets > 0,
+          },
+          bottlePullout: {
+            ...rooms.kitchen.bottlePullout,
+            qty: suggested.bottlePullout,
+            enabled: suggested.bottlePullout > 0,
+          },
+        },
+      });
+
+      if (size) {
+        analytics.roomSizeChanged("Kitchen", size);
+      }
+    },
+    [rooms.kitchen, setRooms]
+  );
+
+  const handleBulkAction = useCallback(
+    (action: string) => {
+      analytics.bulkActionClicked(action);
+
+      switch (action) {
+        case "enable-essentials":
+          rooms.bedrooms.forEach((br) => {
+            updateBedroom(br.id, {
+              items: {
+                ...br.items,
+                wardrobe: { ...br.items.wardrobe, enabled: true },
+              },
+            });
+          });
+          break;
+
+        case "set-typical-sizes":
+          if (basics.bhk) {
+            const prefilled = prefillRoomsForBHK(basics.bhk);
+            setRooms(prefilled);
+          }
+          break;
+
+        case "reset-packages":
+          rooms.bedrooms.forEach((br) => {
+            const resetItems = { ...br.items };
+            Object.keys(resetItems).forEach((key) => {
+              const itemKey = key as keyof typeof resetItems;
+              if (resetItems[itemKey]) {
+                resetItems[itemKey] = {
+                  ...resetItems[itemKey],
+                  pkgOverride: undefined,
+                };
+              }
+            });
+            updateBedroom(br.id, { items: resetItems });
+          });
+          setRooms({
+            living: {
+              ...rooms.living,
+              tvDrawerUnit: {
+                ...rooms.living.tvDrawerUnit,
+                pkgOverride: undefined,
+              },
+              tvPanel: { ...rooms.living.tvPanel, pkgOverride: undefined },
+            },
+            kitchen: {
+              ...rooms.kitchen,
+              baseUnit: { ...rooms.kitchen.baseUnit, pkgOverride: undefined },
+              tandemBaskets: {
+                ...rooms.kitchen.tandemBaskets,
+                pkgOverride: undefined,
+              },
+              bottlePullout: {
+                ...rooms.kitchen.bottlePullout,
+                pkgOverride: undefined,
+              },
+              cornerUnit: {
+                ...rooms.kitchen.cornerUnit,
+                pkgOverride: undefined,
+              },
+              wickerBasket: {
+                ...rooms.kitchen.wickerBasket,
+                pkgOverride: undefined,
+              },
+            },
+            pooja: {
+              ...rooms.pooja,
+              doors: { ...rooms.pooja.doors, pkgOverride: undefined },
+            },
+          });
+          break;
+      }
+    },
+    [basics.bhk, rooms, updateBedroom, setRooms]
+  );
+
+  const handleNext = useCallback(() => {
+    const timeOnStep = Date.now() - startTime;
+    const roomsEnabled = rooms.bedrooms.length;
+    const itemsEnabled = rooms.bedrooms.reduce((acc, br) => {
+      return (
+        acc +
+        Object.values(br.items).filter((item) => item && item.enabled).length
+      );
+    }, 0);
+    const overridesCount = rooms.bedrooms.reduce((acc, br) => {
+      return (
+        acc +
+        Object.values(br.items).filter(
+          (item) => item && item.pkgOverride !== undefined
+        ).length
+      );
+    }, 0);
+
+    analytics.nextClicked("rooms", {
+      roomsEnabled,
+      itemsEnabled,
+      overridesCount,
+    });
+    analytics.timeOnStep(3, "rooms", timeOnStep);
+    setCurrentStep(4);
+  }, [startTime, rooms, setCurrentStep]);
+
+  const handleReset = () => {
+    if (
+      confirm("Are you sure you want to reset all data? This cannot be undone.")
+    ) {
+      resetStore();
+      analytics.resetClicked("Rooms");
+    }
+  };
+
+  const handleBack = () => {
+    setCurrentStep(2);
+  };
+
+  const countOverrides = () => {
+    let count = 0;
+    rooms.bedrooms.forEach((br) => {
+      Object.values(br.items).forEach((item) => {
+        if (item && item.pkgOverride !== undefined) count++;
+      });
+    });
+    if (rooms.living.tvDrawerUnit.pkgOverride) count++;
+    if (rooms.living.tvPanel.pkgOverride) count++;
+    if (rooms.kitchen.baseUnit.pkgOverride) count++;
+    if (rooms.kitchen.tandemBaskets.pkgOverride) count++;
+    if (rooms.kitchen.bottlePullout.pkgOverride) count++;
+    if (rooms.kitchen.cornerUnit.pkgOverride) count++;
+    if (rooms.kitchen.wickerBasket.pkgOverride) count++;
+    if (rooms.pooja.doors.pkgOverride) count++;
+    return count;
   };
 
   return (
-    <div className="space-y-6">
-      <CardHeader className="px-0">
-        <CardTitle className="text-2xl text-black">Rooms & Items</CardTitle>
-        <p className="text-gray-600">
-          Configure each room and select the items you want to include
-        </p>
-      </CardHeader>
-
-      <div className="space-y-8">
-        {/* Master Bedroom */}
-        <Card className="border border-gray-200">
-          <CardHeader>
-            <CardTitle className="text-lg text-black">Master Bedroom</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label className="text-black font-medium">Room Size</Label>
-                <Select
-                  value={rooms.master.size}
-                  onValueChange={(value: BedroomSize) =>
-                    updateRoom("master", { size: value })
-                  }
-                >
-                  <SelectTrigger className="bg-white border-gray-300">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white">
-                    <SelectItem value="14x16">14&apos; × 16&apos;</SelectItem>
-                    <SelectItem value="10x12">10&apos; × 12&apos;</SelectItem>
-                    <SelectItem value="10x10">10&apos; × 10&apos;</SelectItem>
-                    <SelectItem value="11.5x11.5">
-                      11.5&apos; × 11.5&apos;
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+    <div className="max-w-5xl mx-auto">
+      <div className="calculator-card rounded-xl overflow-hidden">
+        <div className="section-header">
+          <div className="flex items-start justify-between">
+            <div>
+              <CardTitle className="text-3xl font-bold text-primary-foreground mb-2">
+                Rooms & Items
+              </CardTitle>
+              <p className="text-primary-foreground/90 text-base leading-relaxed">
+                Configure each room and select the items you want to include
+              </p>
+              {rooms.prefilled && (
+                <p className="text-sm text-primary-foreground/80 mt-2">
+                  We pre-filled common choices—you can change anything.
+                </p>
+              )}
             </div>
 
-            <div className="space-y-3">
-              {[
-                { key: "wardrobe", label: "Wardrobe" },
-                { key: "studyTable", label: "Study Table" },
-                { key: "tvUnit", label: "TV Unit" },
-                { key: "bedBackPanel", label: "Bed Back Panel" },
-              ].map((item) => {
-                const itemData =
-                  rooms.master[item.key as keyof typeof rooms.master];
-                const isEnabled =
-                  typeof itemData === "object" && "enabled" in itemData
-                    ? (itemData as any).enabled
-                    : false;
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="bg-primary-foreground/10 text-primary-foreground border-primary-foreground/20 hover:bg-primary-foreground/20"
+                >
+                  Bulk Actions
+                  <ChevronDown className="ml-2 h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="end"
+                className="bg-popover border-border w-64 text-popover-foreground"
+              >
+                <DropdownMenuItem
+                  onClick={() => handleBulkAction("enable-essentials")}
+                  className="cursor-pointer focus:bg-accent/10 focus:text-foreground text-popover-foreground"
+                >
+                  Enable Essentials for all rooms
+                </DropdownMenuItem>
+                {basics.bhk && (
+                  <DropdownMenuItem
+                    onClick={() => handleBulkAction("set-typical-sizes")}
+                    className="cursor-pointer focus:bg-accent/10 focus:text-foreground text-popover-foreground"
+                  >
+                    Set typical sizes for {basics.bhk.toUpperCase()}
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem
+                  onClick={() => handleBulkAction("reset-packages")}
+                  className="cursor-pointer focus:bg-accent/10 focus:text-foreground text-popover-foreground"
+                >
+                  Reset all packages to Global ({countOverrides()} overrides)
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
 
-                return (
-                  <div key={item.key} className="border rounded-lg p-4">
-                    <div className="flex items-center justify-between gap-4">
-                      <div className="flex items-center space-x-3">
-                        <Switch
-                          checked={isEnabled}
-                          onCheckedChange={(checked) =>
-                            updateRoom("master", {
-                              [item.key]: { enabled: checked },
-                            })
-                          }
-                          className="toggle-switch"
-                        />
-                        <Label className="text-black font-medium">
-                          {item.label}
-                        </Label>
+        <CardContent className="section-content">
+          <div className="space-y-6">
+            {/* Bedrooms */}
+            {rooms.bedrooms.map((bedroom, index) => (
+              <Card key={bedroom.id} className="elegant-card">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center">
+                        <svg
+                          className="w-5 h-5 text-secondary-foreground"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
+                          />
+                        </svg>
                       </div>
-
-                      {isEnabled && (
-                        <PackagePicker
-                          globalPkg={basics.pkg}
-                          currentPackage={
-                            typeof itemData === "object" &&
-                            "pkgOverride" in itemData
-                              ? (itemData as any).pkgOverride
-                              : null
-                          }
-                          onPackageChange={(pkg) =>
-                            updateRoom("master", {
-                              [item.key]: {
-                                ...(typeof itemData === "object"
-                                  ? itemData
-                                  : { enabled: true }),
-                                pkgOverride: pkg,
-                              },
-                            })
-                          }
-                          itemName={item.label}
-                        />
-                      )}
+                      <CardTitle className="text-lg font-semibold">
+                        {bedroom.role} Bedroom
+                      </CardTitle>
+                      <Select
+                        value={bedroom.role}
+                        onValueChange={(value: BedroomRole) => {
+                          analytics.bedroomRoleChanged(bedroom.role, value);
+                          updateBedroom(bedroom.id, { role: value });
+                        }}
+                      >
+                        <SelectTrigger className="calculator-select w-32 h-9">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-popover border-border text-popover-foreground">
+                          <SelectItem
+                            value="Master"
+                            className="focus:bg-secondary/10 focus:text-foreground text-popover-foreground"
+                          >
+                            Master
+                          </SelectItem>
+                          <SelectItem
+                            value="Kid"
+                            className="focus:bg-secondary/10 focus:text-foreground text-popover-foreground"
+                          >
+                            Kid
+                          </SelectItem>
+                          <SelectItem
+                            value="Guest"
+                            className="focus:bg-secondary/10 focus:text-foreground text-popover-foreground"
+                          >
+                            Guest
+                          </SelectItem>
+                          <SelectItem
+                            value="Other"
+                            className="focus:bg-secondary/10 focus:text-foreground text-popover-foreground"
+                          >
+                            Other
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
+
+                    {rooms.bedrooms.length > 1 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          analytics.bedroomRemoved(bedroom.role);
+                          removeBedroom(bedroom.id);
+                        }}
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Children Bedroom */}
-        <Card className="border border-gray-200">
-          <CardHeader>
-            <CardTitle className="text-lg text-black">
-              Children&apos;s Bedroom
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label className="text-black font-medium">Room Size</Label>
-                <Select
-                  value={rooms.children.size}
-                  onValueChange={(value: BedroomSize) =>
-                    updateRoom("children", { size: value })
-                  }
-                >
-                  <SelectTrigger className="bg-white border-gray-300">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white">
-                    <SelectItem value="14x16">14&apos; × 16&apos;</SelectItem>
-                    <SelectItem value="10x12">10&apos; × 12&apos;</SelectItem>
-                    <SelectItem value="10x10">10&apos; × 10&apos;</SelectItem>
-                    <SelectItem value="11.5x11.5">
-                      11.5&apos; × 11.5&apos;
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              {[
-                { key: "wardrobe", label: "Wardrobe" },
-                { key: "studyTable", label: "Study Table" },
-                { key: "bedBackPanel", label: "Bed Back Panel" },
-              ].map((item) => {
-                const itemData =
-                  rooms.children[item.key as keyof typeof rooms.children];
-                const isEnabled =
-                  typeof itemData === "object" && "enabled" in itemData
-                    ? (itemData as any).enabled
-                    : false;
-
-                return (
-                  <div key={item.key} className="border rounded-lg p-4">
-                    <div className="flex items-center justify-between gap-4">
-                      <div className="flex items-center space-x-3">
-                        <Switch
-                          checked={isEnabled}
-                          onCheckedChange={(checked) =>
-                            updateRoom("children", {
-                              [item.key]: { enabled: checked },
-                            })
-                          }
-                          className="toggle-switch"
-                        />
-                        <Label className="text-black font-medium">
-                          {item.label}
-                        </Label>
-                      </div>
-
-                      {isEnabled && (
-                        <PackagePicker
-                          globalPkg={basics.pkg}
-                          currentPackage={
-                            typeof itemData === "object" &&
-                            "pkgOverride" in itemData
-                              ? (itemData as any).pkgOverride
-                              : null
-                          }
-                          onPackageChange={(pkg) =>
-                            updateRoom("children", {
-                              [item.key]: {
-                                ...(typeof itemData === "object"
-                                  ? itemData
-                                  : { enabled: true }),
-                                pkgOverride: pkg,
-                              },
-                            })
-                          }
-                          itemName={item.label}
-                        />
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Guest Bedroom */}
-        <Card className="border border-gray-200">
-          <CardHeader>
-            <CardTitle className="text-lg text-black">Guest Bedroom</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label className="text-black font-medium">Room Size</Label>
-                <Select
-                  value={rooms.guest.size}
-                  onValueChange={(value: BedroomSize) =>
-                    updateRoom("guest", { size: value })
-                  }
-                >
-                  <SelectTrigger className="bg-white border-gray-300">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white">
-                    <SelectItem value="14x16">14&apos; × 16&apos;</SelectItem>
-                    <SelectItem value="10x12">10&apos; × 12&apos;</SelectItem>
-                    <SelectItem value="10x10">10&apos; × 10&apos;</SelectItem>
-                    <SelectItem value="11.5x11.5">
-                      11.5&apos; × 11.5&apos;
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              {[
-                { key: "wardrobe", label: "Wardrobe" },
-                { key: "studyTable", label: "Study Table" },
-                { key: "bedBackPanel", label: "Bed Back Panel" },
-              ].map((item) => {
-                const itemData =
-                  rooms.guest[item.key as keyof typeof rooms.guest];
-                const isEnabled =
-                  typeof itemData === "object" && "enabled" in itemData
-                    ? (itemData as any).enabled
-                    : false;
-
-                return (
-                  <div key={item.key} className="border rounded-lg p-4">
-                    <div className="flex items-center justify-between gap-4">
-                      <div className="flex items-center space-x-3">
-                        <Switch
-                          checked={isEnabled}
-                          onCheckedChange={(checked) =>
-                            updateRoom("guest", {
-                              [item.key]: { enabled: checked },
-                            })
-                          }
-                          className="toggle-switch"
-                        />
-                        <Label className="text-black font-medium">
-                          {item.label}
-                        </Label>
-                      </div>
-
-                      {isEnabled && (
-                        <PackagePicker
-                          globalPkg={basics.pkg}
-                          currentPackage={
-                            typeof itemData === "object" &&
-                            "pkgOverride" in itemData
-                              ? (itemData as any).pkgOverride
-                              : null
-                          }
-                          onPackageChange={(pkg) =>
-                            updateRoom("guest", {
-                              [item.key]: {
-                                ...(typeof itemData === "object"
-                                  ? itemData
-                                  : { enabled: true }),
-                                pkgOverride: pkg,
-                              },
-                            })
-                          }
-                          itemName={item.label}
-                        />
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Living Room */}
-        <Card className="border border-gray-200">
-          <CardHeader>
-            <CardTitle className="text-lg text-black">Living Room</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label className="text-black font-medium">Room Size</Label>
-                <Select
-                  value={rooms.living.size}
-                  onValueChange={(value: LivingSize) =>
-                    updateRoom("living", { size: value })
-                  }
-                >
-                  <SelectTrigger className="bg-white border-gray-300">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white">
-                    <SelectItem value="7x10">7&apos; × 10&apos;</SelectItem>
-                    <SelectItem value="10x13">10&apos; × 13&apos;</SelectItem>
-                    <SelectItem value="12x18">12&apos; × 18&apos;</SelectItem>
-                    <SelectItem value="15x20">15&apos; × 20&apos;</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              {/* TV Drawer Unit */}
-              <div className="border rounded-lg p-4">
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex items-center space-x-3">
-                    <Switch
-                      checked={rooms.living.tvDrawerUnit?.enabled || false}
-                      onCheckedChange={(checked) =>
-                        updateRoom("living", {
-                          tvDrawerUnit: { enabled: checked },
-                        })
-                      }
-                      className="toggle-switch"
-                    />
-                    <Label className="text-black font-medium">
-                      TV Drawer Unit
-                    </Label>
-                  </div>
-
-                  {rooms.living.tvDrawerUnit?.enabled && (
-                    <PackagePicker
-                      globalPkg={basics.pkg}
-                      currentPackage={
-                        rooms.living.tvDrawerUnit?.pkgOverride || null
-                      }
-                      onPackageChange={(pkg) =>
-                        updateRoom("living", {
-                          tvDrawerUnit: {
-                            ...rooms.living.tvDrawerUnit,
-                            pkgOverride: pkg,
-                          },
-                        })
-                      }
-                      itemName="TV Drawer Unit"
-                    />
-                  )}
-                </div>
-              </div>
-
-              {/* TV Unit Panelling */}
-              <div className="border rounded-lg p-4 space-y-3">
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex items-center space-x-3">
-                    <Switch
-                      checked={rooms.living.tvPanel?.enabled || false}
-                      onCheckedChange={(checked) =>
-                        updateRoom("living", {
-                          tvPanel: {
-                            ...rooms.living.tvPanel,
-                            enabled: checked,
-                          },
-                        })
-                      }
-                      className="toggle-switch"
-                    />
-                    <Label className="text-black font-medium">
-                      TV Unit Panelling
-                    </Label>
-                  </div>
-
-                  {rooms.living.tvPanel?.enabled && (
-                    <PackagePicker
-                      globalPkg={basics.pkg}
-                      currentPackage={rooms.living.tvPanel?.pkgOverride || null}
-                      onPackageChange={(pkg) =>
-                        updateRoom("living", {
-                          tvPanel: {
-                            ...rooms.living.tvPanel,
-                            pkgOverride: pkg,
-                          },
-                        })
-                      }
-                      itemName="TV Panel"
-                    />
-                  )}
-                </div>
-
-                {rooms.living.tvPanel?.enabled && (
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Room Size */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <Label className="text-black text-sm">
-                        Panel Area (sq ft)
-                      </Label>
+                      <Label className="field-label">Room Size</Label>
+                      <Select
+                        value={bedroom.size}
+                        onValueChange={(value: BedroomSize) =>
+                          handleBedroomSizeChange(bedroom.id, value)
+                        }
+                      >
+                        <SelectTrigger className="calculator-select mt-2">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-popover border-border text-popover-foreground">
+                          <SelectItem
+                            value="14x16"
+                            className="focus:bg-secondary/10 focus:text-foreground text-popover-foreground"
+                          >
+                            14' × 16'
+                          </SelectItem>
+                          <SelectItem
+                            value="10x12"
+                            className="focus:bg-secondary/10 focus:text-foreground text-popover-foreground"
+                          >
+                            10' × 12'
+                          </SelectItem>
+                          <SelectItem
+                            value="10x10"
+                            className="focus:bg-secondary/10 focus:text-foreground text-popover-foreground"
+                          >
+                            10' × 10'
+                          </SelectItem>
+                          <SelectItem
+                            value="11.5x11.5"
+                            className="focus:bg-secondary/10 focus:text-foreground text-popover-foreground"
+                          >
+                            11.5' × 11.5'
+                          </SelectItem>
+                          <SelectItem
+                            value="custom"
+                            className="focus:bg-secondary/10 focus:text-foreground text-popover-foreground"
+                          >
+                            Custom
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {bedroom.size === "custom" && (
+                      <div>
+                        <Label className="field-label">Custom Size</Label>
+                        <Input
+                          placeholder="e.g., 10x12 or 85 m²"
+                          value={bedroom.customSize || ""}
+                          onChange={(e) =>
+                            handleBedroomSizeChange(
+                              bedroom.id,
+                              "custom",
+                              e.target.value
+                            )
+                          }
+                          className="calculator-input mt-2"
+                        />
+                        {sizeWarnings[`bedroom-${bedroom.id}`] && (
+                          <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
+                            <AlertCircle className="h-3 w-3" />
+                            {sizeWarnings[`bedroom-${bedroom.id}`]}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Room Presets */}
+                  <div className="flex flex-wrap gap-2 items-center">
+                    <Label className="text-sm text-muted-foreground">
+                      Quick presets:
+                    </Label>
+                    {(
+                      [
+                        "Bare",
+                        "Essentials",
+                        "Storage+Study",
+                        "Feature Wall",
+                      ] as RoomPreset[]
+                    ).map((preset) => (
+                      <Button
+                        key={preset}
+                        variant={
+                          selectedPresets[bedroom.id] === preset
+                            ? "default"
+                            : "outline"
+                        }
+                        size="sm"
+                        onClick={() => handleRoomPreset(bedroom.id, preset)}
+                        className={`h-8 text-xs ${
+                          selectedPresets[bedroom.id] === preset
+                            ? "bg-secondary text-secondary-foreground"
+                            : "calculator-button-secondary"
+                        }`}
+                      >
+                        {preset}
+                      </Button>
+                    ))}
+                  </div>
+
+                  {/* Items */}
+                  <div className="grid grid-cols-2 gap-3 pt-2">
+                    {Object.entries(bedroom.items).map(([itemKey, item]) => {
+                      if (!item) return null;
+                      const itemLabels: Record<string, string> = {
+                        wardrobe: "Wardrobe",
+                        studyTable: "Study Table",
+                        tvUnit: "TV Unit",
+                        bedBackPanel: "Bed Back Panel",
+                      };
+
+                      return (
+                        <div
+                          key={itemKey}
+                          className="border border-border rounded-lg p-4 bg-muted/30"
+                        >
+                          <div className="flex flex-col gap-3">
+                            <div
+                              className="flex items-center space-x-3 cursor-pointer"
+                              onClick={() => {
+                                const newEnabled = !item.enabled;
+                                updateBedroom(bedroom.id, {
+                                  items: {
+                                    ...bedroom.items,
+                                    [itemKey]: { ...item, enabled: newEnabled },
+                                  },
+                                });
+                                analytics.itemToggled(
+                                  bedroom.role,
+                                  itemLabels[itemKey],
+                                  newEnabled
+                                );
+                              }}
+                            >
+                              <Switch checked={item.enabled} />
+                              <Label className="field-label cursor-pointer text-sm">
+                                {itemLabels[itemKey]}
+                              </Label>
+                            </div>
+
+                            {item.enabled && (
+                              <PackagePicker
+                                globalPkg={basics.pkg}
+                                currentPackage={item.pkgOverride}
+                                onPackageChange={(pkg) => {
+                                  updateBedroom(bedroom.id, {
+                                    items: {
+                                      ...bedroom.items,
+                                      [itemKey]: { ...item, pkgOverride: pkg },
+                                    },
+                                  });
+                                  if (pkg) {
+                                    analytics.itemPkgOverrideSet(
+                                      bedroom.role,
+                                      itemLabels[itemKey],
+                                      pkg
+                                    );
+                                  } else {
+                                    analytics.itemPkgOverrideReset(
+                                      bedroom.role,
+                                      itemLabels[itemKey]
+                                    );
+                                  }
+                                }}
+                                itemName={itemLabels[itemKey]}
+                              />
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+
+            {/* Add Bedroom Button */}
+            <Button
+              variant="outline"
+              onClick={() => {
+                addBedroom();
+                analytics.bedroomAdded("Other");
+              }}
+              className="w-full border-dashed border-2 border-border hover:bg-muted/50 h-12"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Bedroom
+            </Button>
+
+            {/* Living Room */}
+            <Card className="elegant-card">
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-accent flex items-center justify-center">
+                    <svg
+                      className="w-5 h-5 text-accent-foreground"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"
+                      />
+                    </svg>
+                  </div>
+                  <CardTitle className="text-lg font-semibold">
+                    Living Room
+                  </CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label className="field-label">Room Size</Label>
+                    <Select
+                      value={rooms.living.size}
+                      onValueChange={(value: LivingSize) => {
+                        setRooms({ living: { ...rooms.living, size: value } });
+                        analytics.roomSizeChanged("Living", value);
+                      }}
+                    >
+                      <SelectTrigger className="calculator-select mt-2">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-popover border-border text-popover-foreground">
+                        <SelectItem
+                          value="7x10"
+                          className="focus:bg-accent/10 focus:text-foreground text-popover-foreground"
+                        >
+                          7' × 10'
+                        </SelectItem>
+                        <SelectItem
+                          value="10x13"
+                          className="focus:bg-accent/10 focus:text-foreground text-popover-foreground"
+                        >
+                          10' × 13'
+                        </SelectItem>
+                        <SelectItem
+                          value="12x18"
+                          className="focus:bg-accent/10 focus:text-foreground text-popover-foreground"
+                        >
+                          12' × 18'
+                        </SelectItem>
+                        <SelectItem
+                          value="15x20"
+                          className="focus:bg-accent/10 focus:text-foreground text-popover-foreground"
+                        >
+                          15' × 20'
+                        </SelectItem>
+                        <SelectItem
+                          value="custom"
+                          className="focus:bg-accent/10 focus:text-foreground text-popover-foreground"
+                        >
+                          Custom
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {rooms.living.size === "custom" && (
+                    <div>
+                      <Label className="field-label">Custom Size</Label>
                       <Input
-                        type="number"
-                        value={rooms.living.tvPanel?.panelSqft || ""}
+                        placeholder="e.g., 12x18"
+                        value={rooms.living.customSize || ""}
                         onChange={(e) =>
-                          updateRoom("living", {
-                            tvPanel: {
-                              ...rooms.living.tvPanel,
-                              panelSqft: Number(e.target.value),
+                          setRooms({
+                            living: {
+                              ...rooms.living,
+                              customSize: e.target.value,
                             },
                           })
                         }
-                        className="bg-white border-gray-300 mt-1"
-                        placeholder="60"
+                        className="calculator-input mt-2"
                       />
                     </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Pooja Room */}
-        <Card className="border border-gray-200">
-          <CardHeader>
-            <CardTitle className="text-lg text-black">Pooja Room</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label className="text-black font-medium">Room Size</Label>
-                <Select
-                  value={rooms.pooja.size}
-                  onValueChange={(value: PoojaSize) =>
-                    updateRoom("pooja", { size: value })
-                  }
-                >
-                  <SelectTrigger className="bg-white border-gray-300">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white">
-                    <SelectItem value="9x9">9&apos; × 9&apos;</SelectItem>
-                    <SelectItem value="3x3">3&apos; × 3&apos;</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              {/* Doors */}
-              <div className="border rounded-lg p-4 space-y-3">
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex items-center space-x-3">
-                    <Switch
-                      checked={rooms.pooja.doors?.enabled || false}
-                      onCheckedChange={(checked) =>
-                        updateRoom("pooja", {
-                          doors: {
-                            ...rooms.pooja.doors,
-                            enabled: checked,
-                          },
-                        })
-                      }
-                      className="toggle-switch"
-                    />
-                    <Label className="text-black font-medium">Doors</Label>
-                  </div>
-
-                  {rooms.pooja.doors?.enabled && (
-                    <PackagePicker
-                      globalPkg={basics.pkg}
-                      currentPackage={rooms.pooja.doors?.pkgOverride || null}
-                      onPackageChange={(pkg) =>
-                        updateRoom("pooja", {
-                          doors: {
-                            ...rooms.pooja.doors,
-                            pkgOverride: pkg,
-                          },
-                        })
-                      }
-                      itemName="Doors"
-                    />
                   )}
                 </div>
 
-                {rooms.pooja.doors?.enabled && (
-                  <div>
-                    <Label className="text-black text-sm">
-                      Number of Doors
-                    </Label>
-                    <Input
-                      type="number"
-                      value={rooms.pooja.doors?.qty || ""}
-                      onChange={(e) =>
-                        updateRoom("pooja", {
-                          doors: {
-                            ...rooms.pooja.doors,
-                            qty: Number(e.target.value),
-                          },
-                        })
-                      }
-                      className="bg-white border-gray-300 mt-1"
-                      placeholder="0"
-                      min={0}
-                    />
+                <div className="space-y-3 pt-2">
+                  {/* TV Drawer Unit */}
+                  <div className="border border-border rounded-lg p-4 bg-muted/30">
+                    <div className="flex items-center justify-between gap-4">
+                      <div
+                        className="flex items-center space-x-3 flex-1 cursor-pointer"
+                        onClick={() => {
+                          const newEnabled = !rooms.living.tvDrawerUnit.enabled;
+                          setRooms({
+                            living: {
+                              ...rooms.living,
+                              tvDrawerUnit: {
+                                ...rooms.living.tvDrawerUnit,
+                                enabled: newEnabled,
+                              },
+                            },
+                          });
+                          analytics.itemToggled(
+                            "Living",
+                            "TV Drawer Unit",
+                            newEnabled
+                          );
+                        }}
+                      >
+                        <Switch checked={rooms.living.tvDrawerUnit.enabled} />
+                        <Label className="field-label cursor-pointer">
+                          TV Drawer Unit
+                        </Label>
+                      </div>
+
+                      {rooms.living.tvDrawerUnit.enabled && (
+                        <PackagePicker
+                          globalPkg={basics.pkg}
+                          currentPackage={rooms.living.tvDrawerUnit.pkgOverride}
+                          onPackageChange={(pkg) => {
+                            setRooms({
+                              living: {
+                                ...rooms.living,
+                                tvDrawerUnit: {
+                                  ...rooms.living.tvDrawerUnit,
+                                  pkgOverride: pkg,
+                                },
+                              },
+                            });
+                            if (pkg) {
+                              analytics.itemPkgOverrideSet(
+                                "Living",
+                                "TV Drawer Unit",
+                                pkg
+                              );
+                            } else {
+                              analytics.itemPkgOverrideReset(
+                                "Living",
+                                "TV Drawer Unit"
+                              );
+                            }
+                          }}
+                          itemName="TV Drawer Unit"
+                        />
+                      )}
+                    </div>
                   </div>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
 
-        {/* Kitchen */}
-        <Card className="border border-gray-200">
-          <CardHeader>
-            <CardTitle className="text-lg text-black">Kitchen</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label className="text-black font-medium">Kitchen Type</Label>
-                <Select
-                  value={rooms.kitchen.type}
-                  onValueChange={(value: KitchenType | "Modular") =>
-                    updateRoom("kitchen", { type: value })
-                  }
+                  {/* TV Panel */}
+                  <div className="border border-border rounded-lg p-4 bg-muted/30 space-y-3">
+                    <div className="flex items-center justify-between gap-4">
+                      <div
+                        className="flex items-center space-x-3 flex-1 cursor-pointer"
+                        onClick={() => {
+                          const newEnabled = !rooms.living.tvPanel.enabled;
+                          setRooms({
+                            living: {
+                              ...rooms.living,
+                              tvPanel: {
+                                ...rooms.living.tvPanel,
+                                enabled: newEnabled,
+                              },
+                            },
+                          });
+                          analytics.itemToggled(
+                            "Living",
+                            "TV Panel",
+                            newEnabled
+                          );
+                        }}
+                      >
+                        <Switch checked={rooms.living.tvPanel.enabled} />
+                        <Label className="field-label cursor-pointer">
+                          TV Unit Panelling
+                        </Label>
+                      </div>
+
+                      {rooms.living.tvPanel.enabled && (
+                        <PackagePicker
+                          globalPkg={basics.pkg}
+                          currentPackage={rooms.living.tvPanel.pkgOverride}
+                          onPackageChange={(pkg) => {
+                            setRooms({
+                              living: {
+                                ...rooms.living,
+                                tvPanel: {
+                                  ...rooms.living.tvPanel,
+                                  pkgOverride: pkg,
+                                },
+                              },
+                            });
+                            if (pkg) {
+                              analytics.itemPkgOverrideSet(
+                                "Living",
+                                "TV Panel",
+                                pkg
+                              );
+                            } else {
+                              analytics.itemPkgOverrideReset(
+                                "Living",
+                                "TV Panel"
+                              );
+                            }
+                          }}
+                          itemName="TV Panel"
+                        />
+                      )}
+                    </div>
+
+                    {rooms.living.tvPanel.enabled && (
+                      <>
+                        {/* TV Panel presets with selected state */}
+                        <div className="flex flex-wrap gap-2 items-center">
+                          <Label className="text-sm text-muted-foreground">
+                            Quick presets:
+                          </Label>
+                          {(
+                            ["Small", "Medium", "Feature"] as TVPanelPreset[]
+                          ).map((preset) => (
+                            <Button
+                              key={preset}
+                              variant={
+                                selectedTVPreset === preset
+                                  ? "default"
+                                  : "outline"
+                              }
+                              size="sm"
+                              onClick={() => handleTVPanelPreset(preset)}
+                              className={`h-8 text-xs ${
+                                selectedTVPreset === preset
+                                  ? "bg-accent text-accent-foreground"
+                                  : "calculator-button-secondary"
+                              }`}
+                            >
+                              {preset}
+                            </Button>
+                          ))}
+                        </div>
+
+                        <div>
+                          <Label className="field-label text-sm">
+                            Panel Area (sq ft)
+                          </Label>
+                          <Input
+                            type="number"
+                            value={rooms.living.tvPanel.panelSqft || ""}
+                            onChange={(e) =>
+                              setRooms({
+                                living: {
+                                  ...rooms.living,
+                                  tvPanel: {
+                                    ...rooms.living.tvPanel,
+                                    panelSqft: Number(e.target.value),
+                                  },
+                                },
+                              })
+                            }
+                            className="calculator-input mt-1"
+                            placeholder="60"
+                          />
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Pooja Room */}
+            <Card className="elegant-card">
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center">
+                    <svg
+                      className="w-5 h-5 text-secondary-foreground"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"
+                      />
+                    </svg>
+                  </div>
+                  <CardTitle className="text-lg font-semibold">
+                    Pooja Room
+                  </CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label className="field-label">Room Size</Label>
+                    <Select
+                      value={rooms.pooja.size}
+                      onValueChange={(value: PoojaSize) => {
+                        setRooms({ pooja: { ...rooms.pooja, size: value } });
+                        analytics.roomSizeChanged("Pooja", value);
+                      }}
+                    >
+                      <SelectTrigger className="calculator-select mt-2">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-popover border-border text-popover-foreground">
+                        <SelectItem
+                          value="9x9"
+                          className="focus:bg-secondary/10 focus:text-foreground text-popover-foreground"
+                        >
+                          9' × 9'
+                        </SelectItem>
+                        <SelectItem
+                          value="3x3"
+                          className="focus:bg-secondary/10 focus:text-foreground text-popover-foreground"
+                        >
+                          3' × 3'
+                        </SelectItem>
+                        <SelectItem
+                          value="custom"
+                          className="focus:bg-secondary/10 focus:text-foreground text-popover-foreground"
+                        >
+                          Custom
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {rooms.pooja.size === "custom" && (
+                    <div>
+                      <Label className="field-label">Custom Size</Label>
+                      <Input
+                        placeholder="e.g., 5x6"
+                        value={rooms.pooja.customSize || ""}
+                        onChange={(e) =>
+                          setRooms({
+                            pooja: {
+                              ...rooms.pooja,
+                              customSize: e.target.value,
+                            },
+                          })
+                        }
+                        className="calculator-input mt-2"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-3 pt-2">
+                  <div className="border border-border rounded-lg p-4 bg-muted/30 space-y-3">
+                    <div className="flex items-center justify-between gap-4">
+                      <div
+                        className="flex items-center space-x-3 flex-1 cursor-pointer"
+                        onClick={() => {
+                          const newEnabled = !rooms.pooja.doors.enabled;
+                          setRooms({
+                            pooja: {
+                              ...rooms.pooja,
+                              doors: {
+                                ...rooms.pooja.doors,
+                                enabled: newEnabled,
+                              },
+                            },
+                          });
+                          analytics.itemToggled("Pooja", "Doors", newEnabled);
+                        }}
+                      >
+                        <Switch checked={rooms.pooja.doors.enabled} />
+                        <Label className="field-label cursor-pointer">
+                          Doors
+                        </Label>
+                      </div>
+
+                      {rooms.pooja.doors.enabled && (
+                        <PackagePicker
+                          globalPkg={basics.pkg}
+                          currentPackage={rooms.pooja.doors.pkgOverride}
+                          onPackageChange={(pkg) => {
+                            setRooms({
+                              pooja: {
+                                ...rooms.pooja,
+                                doors: {
+                                  ...rooms.pooja.doors,
+                                  pkgOverride: pkg,
+                                },
+                              },
+                            });
+                            if (pkg) {
+                              analytics.itemPkgOverrideSet(
+                                "Pooja",
+                                "Doors",
+                                pkg
+                              );
+                            } else {
+                              analytics.itemPkgOverrideReset("Pooja", "Doors");
+                            }
+                          }}
+                          itemName="Doors"
+                        />
+                      )}
+                    </div>
+
+                    {rooms.pooja.doors.enabled && (
+                      <div>
+                        <Label className="field-label text-sm">
+                          Number of Doors
+                        </Label>
+                        <Input
+                          type="number"
+                          value={rooms.pooja.doors.qty || ""}
+                          onChange={(e) =>
+                            setRooms({
+                              pooja: {
+                                ...rooms.pooja,
+                                doors: {
+                                  ...rooms.pooja.doors,
+                                  qty: Number(e.target.value),
+                                },
+                              },
+                            })
+                          }
+                          className="calculator-input mt-1"
+                          placeholder="0"
+                          min={0}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Kitchen */}
+            <Card className="elegant-card">
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-accent flex items-center justify-center">
+                    <svg
+                      className="w-5 h-5 text-accent-foreground"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M3 6h18M3 12h18M3 18h18"
+                      />
+                    </svg>
+                  </div>
+                  <CardTitle className="text-lg font-semibold">
+                    Kitchen
+                  </CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label className="field-label">Kitchen Type</Label>
+                    <Select
+                      value={rooms.kitchen.type}
+                      onValueChange={(value: KitchenType) =>
+                        handleKitchenTypeOrSizeChange(value, undefined)
+                      }
+                    >
+                      <SelectTrigger className="calculator-select mt-2">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-popover border-border text-popover-foreground">
+                        <SelectItem
+                          value="Parallel"
+                          className="focus:bg-accent/10 focus:text-foreground text-popover-foreground"
+                        >
+                          Parallel
+                        </SelectItem>
+                        <SelectItem
+                          value="L-shaped"
+                          className="focus:bg-accent/10 focus:text-foreground text-popover-foreground"
+                        >
+                          L-shaped
+                        </SelectItem>
+                        <SelectItem
+                          value="Island"
+                          className="focus:bg-accent/10 focus:text-foreground text-popover-foreground"
+                        >
+                          Island
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="field-label">Kitchen Size</Label>
+                    <Select
+                      value={rooms.kitchen.size}
+                      onValueChange={(value: KitchenSize) =>
+                        handleKitchenTypeOrSizeChange(undefined, value)
+                      }
+                    >
+                      <SelectTrigger className="calculator-select mt-2">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-popover border-border text-popover-foreground">
+                        <SelectItem
+                          value="8x10"
+                          className="focus:bg-accent/10 focus:text-foreground text-popover-foreground"
+                        >
+                          8' × 10'
+                        </SelectItem>
+                        <SelectItem
+                          value="10x12"
+                          className="focus:bg-accent/10 focus:text-foreground text-popover-foreground"
+                        >
+                          10' × 12'
+                        </SelectItem>
+                        <SelectItem
+                          value="12x14"
+                          className="focus:bg-accent/10 focus:text-foreground text-popover-foreground"
+                        >
+                          12' × 14'
+                        </SelectItem>
+                        <SelectItem
+                          value="custom"
+                          className="focus:bg-accent/10 focus:text-foreground text-popover-foreground"
+                        >
+                          Custom
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {rooms.kitchen.size === "custom" && (
+                    <div>
+                      <Label className="field-label">Custom Size</Label>
+                      <Input
+                        placeholder="e.g., 10x14"
+                        value={rooms.kitchen.customSize || ""}
+                        onChange={(e) =>
+                          setRooms({
+                            kitchen: {
+                              ...rooms.kitchen,
+                              customSize: e.target.value,
+                            },
+                          })
+                        }
+                        className="calculator-input mt-2"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-3 pt-2">
+                  {/* Base Unit */}
+                  <div className="border border-border rounded-lg p-4 bg-muted/30">
+                    <div className="flex items-center justify-between gap-4">
+                      <div
+                        className="flex items-center space-x-3 flex-1 cursor-pointer"
+                        onClick={() => {
+                          const newEnabled = !rooms.kitchen.baseUnit.enabled;
+                          setRooms({
+                            kitchen: {
+                              ...rooms.kitchen,
+                              baseUnit: {
+                                ...rooms.kitchen.baseUnit,
+                                enabled: newEnabled,
+                              },
+                            },
+                          });
+                          analytics.itemToggled(
+                            "Kitchen",
+                            "Base Unit",
+                            newEnabled
+                          );
+                        }}
+                      >
+                        <Switch checked={rooms.kitchen.baseUnit.enabled} />
+                        <Label className="field-label cursor-pointer">
+                          Base Unit
+                        </Label>
+                      </div>
+
+                      {rooms.kitchen.baseUnit.enabled && (
+                        <PackagePicker
+                          globalPkg={basics.pkg}
+                          currentPackage={rooms.kitchen.baseUnit.pkgOverride}
+                          onPackageChange={(pkg) => {
+                            setRooms({
+                              kitchen: {
+                                ...rooms.kitchen,
+                                baseUnit: {
+                                  ...rooms.kitchen.baseUnit,
+                                  pkgOverride: pkg,
+                                },
+                              },
+                            });
+                            if (pkg) {
+                              analytics.itemPkgOverrideSet(
+                                "Kitchen",
+                                "Base Unit",
+                                pkg
+                              );
+                            } else {
+                              analytics.itemPkgOverrideReset(
+                                "Kitchen",
+                                "Base Unit"
+                              );
+                            }
+                          }}
+                          itemName="Base Unit"
+                        />
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Quantity inputs */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label className="field-label text-sm">
+                        Tandem Baskets
+                      </Label>
+                      <Input
+                        type="number"
+                        value={rooms.kitchen.tandemBaskets.qty || ""}
+                        onChange={(e) => {
+                          const qty = Number(e.target.value);
+                          setRooms({
+                            kitchen: {
+                              ...rooms.kitchen,
+                              tandemBaskets: {
+                                ...rooms.kitchen.tandemBaskets,
+                                qty,
+                                enabled: qty > 0,
+                              },
+                            },
+                          });
+                          analytics.kitchenAccessoryQtyChanged(
+                            "Tandem Baskets",
+                            qty
+                          );
+                        }}
+                        className="calculator-input mt-1"
+                        placeholder="0"
+                        min={0}
+                      />
+                    </div>
+                    <div>
+                      <Label className="field-label text-sm">
+                        Bottle Pullout
+                      </Label>
+                      <Input
+                        type="number"
+                        value={rooms.kitchen.bottlePullout.qty || ""}
+                        onChange={(e) => {
+                          const qty = Number(e.target.value);
+                          setRooms({
+                            kitchen: {
+                              ...rooms.kitchen,
+                              bottlePullout: {
+                                ...rooms.kitchen.bottlePullout,
+                                qty,
+                                enabled: qty > 0,
+                              },
+                            },
+                          });
+                          analytics.kitchenAccessoryQtyChanged(
+                            "Bottle Pullout",
+                            qty
+                          );
+                        }}
+                        className="calculator-input mt-1"
+                        placeholder="0"
+                        min={0}
+                      />
+                    </div>
+                  </div>
+
+                  {rooms.kitchen.tandemBaskets.qty > 0 && (
+                    <div className="border border-border rounded-lg p-4 bg-muted/30">
+                      <div className="flex items-center justify-between gap-4">
+                        <Label className="field-label">
+                          Tandem Baskets ({rooms.kitchen.tandemBaskets.qty})
+                        </Label>
+                        <PackagePicker
+                          globalPkg={basics.pkg}
+                          currentPackage={
+                            rooms.kitchen.tandemBaskets.pkgOverride
+                          }
+                          onPackageChange={(pkg) => {
+                            setRooms({
+                              kitchen: {
+                                ...rooms.kitchen,
+                                tandemBaskets: {
+                                  ...rooms.kitchen.tandemBaskets,
+                                  pkgOverride: pkg,
+                                },
+                              },
+                            });
+                            if (pkg) {
+                              analytics.itemPkgOverrideSet(
+                                "Kitchen",
+                                "Tandem Baskets",
+                                pkg
+                              );
+                            } else {
+                              analytics.itemPkgOverrideReset(
+                                "Kitchen",
+                                "Tandem Baskets"
+                              );
+                            }
+                          }}
+                          itemName="Tandem Baskets"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {rooms.kitchen.bottlePullout.qty > 0 && (
+                    <div className="border border-border rounded-lg p-4 bg-muted/30">
+                      <div className="flex items-center justify-between gap-4">
+                        <Label className="field-label">
+                          Bottle Pullout ({rooms.kitchen.bottlePullout.qty})
+                        </Label>
+                        <PackagePicker
+                          globalPkg={basics.pkg}
+                          currentPackage={
+                            rooms.kitchen.bottlePullout.pkgOverride
+                          }
+                          onPackageChange={(pkg) => {
+                            setRooms({
+                              kitchen: {
+                                ...rooms.kitchen,
+                                bottlePullout: {
+                                  ...rooms.kitchen.bottlePullout,
+                                  pkgOverride: pkg,
+                                },
+                              },
+                            });
+                            if (pkg) {
+                              analytics.itemPkgOverrideSet(
+                                "Kitchen",
+                                "Bottle Pullout",
+                                pkg
+                              );
+                            } else {
+                              analytics.itemPkgOverrideReset(
+                                "Kitchen",
+                                "Bottle Pullout"
+                              );
+                            }
+                          }}
+                          itemName="Bottle Pullout"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Corner & Wicker */}
+                  <div className="border border-border rounded-lg p-4 bg-muted/30">
+                    <div className="flex items-center justify-between gap-4">
+                      <div
+                        className="flex items-center space-x-3 flex-1 cursor-pointer"
+                        onClick={() => {
+                          const newEnabled = !rooms.kitchen.cornerUnit.enabled;
+                          setRooms({
+                            kitchen: {
+                              ...rooms.kitchen,
+                              cornerUnit: {
+                                ...rooms.kitchen.cornerUnit,
+                                enabled: newEnabled,
+                              },
+                            },
+                          });
+                          analytics.itemToggled(
+                            "Kitchen",
+                            "Corner Unit",
+                            newEnabled
+                          );
+                        }}
+                      >
+                        <Switch checked={rooms.kitchen.cornerUnit.enabled} />
+                        <Label className="field-label cursor-pointer">
+                          Corner Unit
+                        </Label>
+                      </div>
+                      {rooms.kitchen.cornerUnit.enabled && (
+                        <PackagePicker
+                          globalPkg={basics.pkg}
+                          currentPackage={rooms.kitchen.cornerUnit.pkgOverride}
+                          onPackageChange={(pkg) => {
+                            setRooms({
+                              kitchen: {
+                                ...rooms.kitchen,
+                                cornerUnit: {
+                                  ...rooms.kitchen.cornerUnit,
+                                  pkgOverride: pkg,
+                                },
+                              },
+                            });
+                            if (pkg) {
+                              analytics.itemPkgOverrideSet(
+                                "Kitchen",
+                                "Corner Unit",
+                                pkg
+                              );
+                            } else {
+                              analytics.itemPkgOverrideReset(
+                                "Kitchen",
+                                "Corner Unit"
+                              );
+                            }
+                          }}
+                          itemName="Corner Unit"
+                        />
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="border border-border rounded-lg p-4 bg-muted/30">
+                    <div className="flex items-center justify-between gap-4">
+                      <div
+                        className="flex items-center space-x-3 flex-1 cursor-pointer"
+                        onClick={() => {
+                          const newEnabled =
+                            !rooms.kitchen.wickerBasket.enabled;
+                          setRooms({
+                            kitchen: {
+                              ...rooms.kitchen,
+                              wickerBasket: {
+                                ...rooms.kitchen.wickerBasket,
+                                enabled: newEnabled,
+                              },
+                            },
+                          });
+                          analytics.itemToggled(
+                            "Kitchen",
+                            "Wicker Basket",
+                            newEnabled
+                          );
+                        }}
+                      >
+                        <Switch checked={rooms.kitchen.wickerBasket.enabled} />
+                        <Label className="field-label cursor-pointer">
+                          Wicker Basket
+                        </Label>
+                      </div>
+                      {rooms.kitchen.wickerBasket.enabled && (
+                        <PackagePicker
+                          globalPkg={basics.pkg}
+                          currentPackage={
+                            rooms.kitchen.wickerBasket.pkgOverride
+                          }
+                          onPackageChange={(pkg) => {
+                            setRooms({
+                              kitchen: {
+                                ...rooms.kitchen,
+                                wickerBasket: {
+                                  ...rooms.kitchen.wickerBasket,
+                                  pkgOverride: pkg,
+                                },
+                              },
+                            });
+                            if (pkg) {
+                              analytics.itemPkgOverrideSet(
+                                "Kitchen",
+                                "Wicker Basket",
+                                pkg
+                              );
+                            } else {
+                              analytics.itemPkgOverrideReset(
+                                "Kitchen",
+                                "Wicker Basket"
+                              );
+                            }
+                          }}
+                          itemName="Wicker Basket"
+                        />
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Action Buttons */}
+            <div className="flex items-center justify-between pt-4 gap-4">
+              {/* Left: Back button */}
+              <Button
+                variant="outline"
+                onClick={handleBack}
+                className="bg-white/50 backdrop-blur-md border-white/40 text-foreground hover:bg-white/70 h-14 px-8 rounded-lg text-base font-semibold shadow-md"
+              >
+                <ArrowLeft className="w-5 h-5 mr-2" />
+                Back
+              </Button>
+
+              {/* Center: Reset button */}
+              <Button
+                variant="outline"
+                onClick={handleReset}
+                className="bg-white/50 backdrop-blur-md border-white/40 text-foreground hover:bg-white/70 h-14 px-8 rounded-lg text-base font-semibold shadow-md"
+              >
+                <RotateCcw className="w-5 h-5 mr-2" />
+                Reset
+              </Button>
+
+              {/* Right: Next button */}
+              <Button
+                onClick={handleNext}
+                className="btn-enhanced-primary px-10 h-12"
+              >
+                Next
+                <svg
+                  className="w-5 h-5 ml-2"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
                 >
-                  <SelectTrigger className="bg-white border-gray-300">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white">
-                    <SelectItem value="Parallel">Parallel</SelectItem>
-                    <SelectItem value="L-shaped">L-shaped</SelectItem>
-                    <SelectItem value="Island">Island</SelectItem>
-                    <SelectItem value="Modular">Modular Kitchen</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label className="text-black font-medium">Kitchen Size</Label>
-                <Select
-                  value={rooms.kitchen.size}
-                  onValueChange={(value: KitchenSize) =>
-                    updateRoom("kitchen", { size: value })
-                  }
-                >
-                  <SelectTrigger className="bg-white border-gray-300">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white">
-                    <SelectItem value="8x10">8&apos; × 10&apos;</SelectItem>
-                    <SelectItem value="10x12">10&apos; × 12&apos;</SelectItem>
-                    <SelectItem value="12x14">12&apos; × 14&apos;</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M13 7l5 5m0 0l-5 5m5-5H6"
+                  />
+                </svg>
+              </Button>
             </div>
-
-            <div className="space-y-3">
-              {/* Base Unit */}
-              <div className="flex items-center justify-between p-3 border rounded-lg">
-                <div className="flex items-center space-x-3">
-                  <Switch
-                    checked={rooms.kitchen.baseUnit?.enabled || false}
-                    onCheckedChange={(checked) =>
-                      updateRoom("kitchen", { baseUnit: { enabled: checked } })
-                    }
-                    className="toggle-switch"
-                  />
-                  <Label className="text-black">Base Unit</Label>
-                </div>
-
-                {rooms.kitchen.baseUnit?.enabled && (
-                  <PackagePicker
-                    globalPkg={basics.pkg}
-                    currentPackage={rooms.kitchen.baseUnit?.pkgOverride || null}
-                    onPackageChange={(pkg) =>
-                      updateRoom("kitchen", {
-                        baseUnit: {
-                          ...rooms.kitchen.baseUnit,
-                          pkgOverride: pkg,
-                        },
-                      })
-                    }
-                    itemName="Base Unit"
-                  />
-                )}
-              </div>
-
-              {/* Quantity inputs */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-black text-sm">Tandem Baskets</Label>
-                  <Input
-                    type="number"
-                    value={rooms.kitchen.tandemBaskets?.qty || ""}
-                    onChange={(e) =>
-                      updateRoom("kitchen", {
-                        tandemBaskets: {
-                          ...rooms.kitchen.tandemBaskets,
-                          qty: Number(e.target.value),
-                          enabled: Number(e.target.value) > 0,
-                        },
-                      })
-                    }
-                    className="bg-white border-gray-300"
-                    placeholder="0"
-                    min={0}
-                  />
-                </div>
-                <div>
-                  <Label className="text-black text-sm">Bottle Pullout</Label>
-                  <Input
-                    type="number"
-                    value={rooms.kitchen.bottlePullout?.qty || ""}
-                    onChange={(e) =>
-                      updateRoom("kitchen", {
-                        bottlePullout: {
-                          ...rooms.kitchen.bottlePullout,
-                          qty: Number(e.target.value),
-                          enabled: Number(e.target.value) > 0,
-                        },
-                      })
-                    }
-                    className="bg-white border-gray-300"
-                    placeholder="0"
-                    min={0}
-                  />
-                </div>
-              </div>
-
-              {(rooms.kitchen.tandemBaskets?.qty || 0) > 0 && (
-                <div className="flex items-center justify-between p-3 border rounded-lg">
-                  <Label className="text-black">
-                    Tandem Baskets ({rooms.kitchen.tandemBaskets?.qty || 0})
-                  </Label>
-                  <PackagePicker
-                    globalPkg={basics.pkg}
-                    currentPackage={
-                      rooms.kitchen.tandemBaskets?.pkgOverride || null
-                    }
-                    onPackageChange={(pkg) =>
-                      updateRoom("kitchen", {
-                        tandemBaskets: {
-                          ...rooms.kitchen.tandemBaskets,
-                          pkgOverride: pkg,
-                        },
-                      })
-                    }
-                    itemName="Tandem Baskets"
-                  />
-                </div>
-              )}
-
-              {(rooms.kitchen.bottlePullout?.qty || 0) > 0 && (
-                <div className="flex items-center justify-between p-3 border rounded-lg">
-                  <Label className="text-black">
-                    Bottle Pullout ({rooms.kitchen.bottlePullout?.qty || 0})
-                  </Label>
-                  <PackagePicker
-                    globalPkg={basics.pkg}
-                    currentPackage={
-                      rooms.kitchen.bottlePullout?.pkgOverride || null
-                    }
-                    onPackageChange={(pkg) =>
-                      updateRoom("kitchen", {
-                        bottlePullout: {
-                          ...rooms.kitchen.bottlePullout,
-                          pkgOverride: pkg,
-                        },
-                      })
-                    }
-                    itemName="Bottle Pullout"
-                  />
-                </div>
-              )}
-
-              {/* Corner & Wicker */}
-              <div className="flex items-center justify-between p-3 border rounded-lg">
-                <div className="flex items-center space-x-3">
-                  <Switch
-                    checked={rooms.kitchen.cornerUnit?.enabled || false}
-                    onCheckedChange={(checked) =>
-                      updateRoom("kitchen", {
-                        cornerUnit: { enabled: checked },
-                      })
-                    }
-                    className="toggle-switch"
-                  />
-                  <Label className="text-black">Corner Unit</Label>
-                </div>
-                {rooms.kitchen.cornerUnit?.enabled && (
-                  <PackagePicker
-                    globalPkg={basics.pkg}
-                    currentPackage={
-                      rooms.kitchen.cornerUnit?.pkgOverride || null
-                    }
-                    onPackageChange={(pkg) =>
-                      updateRoom("kitchen", {
-                        cornerUnit: {
-                          ...rooms.kitchen.cornerUnit,
-                          pkgOverride: pkg,
-                        },
-                      })
-                    }
-                    itemName="Corner Unit"
-                  />
-                )}
-              </div>
-
-              <div className="flex items-center justify-between p-3 border rounded-lg">
-                <div className="flex items-center space-x-3">
-                  <Switch
-                    checked={rooms.kitchen.wickerBasket?.enabled || false}
-                    onCheckedChange={(checked) =>
-                      updateRoom("kitchen", {
-                        wickerBasket: { enabled: checked },
-                      })
-                    }
-                    className="toggle-switch"
-                  />
-                  <Label className="text-black">Wicker Basket</Label>
-                </div>
-                {rooms.kitchen.wickerBasket?.enabled && (
-                  <PackagePicker
-                    globalPkg={basics.pkg}
-                    currentPackage={
-                      rooms.kitchen.wickerBasket?.pkgOverride || null
-                    }
-                    onPackageChange={(pkg) =>
-                      updateRoom("kitchen", {
-                        wickerBasket: {
-                          ...rooms.kitchen.wickerBasket,
-                          pkgOverride: pkg,
-                        },
-                      })
-                    }
-                    itemName="Wicker Basket"
-                  />
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <div className="flex justify-between pt-6">
-          <Button
-            variant="outline"
-            onClick={() => setCurrentStep(2)}
-            className="border-gray-300 text-black hover:bg-gray-50"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back
-          </Button>
-          <Button
-            onClick={() => setCurrentStep(4)}
-            className="bg-primary hover:bg-primary/90 text-primary-foreground px-8"
-          >
-            Next
-          </Button>
-        </div>
+          </div>
+        </CardContent>
       </div>
     </div>
   );

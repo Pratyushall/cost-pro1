@@ -1,141 +1,169 @@
+export type BHK =
+  | "studio"
+  | "1bhk"
+  | "2bhk"
+  | "3bhk"
+  | "4bhk"
+  | "5bhk"
+  | "custom";
 export type Package = "Premium" | "Luxury";
-export type BHK = "2bhk" | "3bhk" | "4bhk";
+export type AreaSource = "manual" | "estimated" | "bhk-derived";
 
-export type Basics = {
-  carpetAreaSqft: number;
-  bhk: BHK;
-  pkg: Package;
-};
-
-export type SingleLine = {
-  falseCeiling: {
-    enabled: boolean;
-    areaSqft?: number;
-    pkgOverride?: Package | null;
-  };
-  painting: {
-    enabled: boolean;
-    areaSqft?: number;
-    pkgOverride?: Package | null;
-  };
-  electricalWiring: {
-    enabled: boolean;
-    areaSqft?: number;
-    pkgOverride?: Package | null;
-  };
-};
-
-export type BedroomSize = "14x16" | "10x12" | "10x10" | "11.5x11.5";
-export type LivingSize = "7x10" | "10x13" | "12x18" | "15x20";
-export type KitchenSize = "8x10" | "10x12" | "12x14";
+export type BedroomSize = "14x16" | "10x12" | "10x10" | "11.5x11.5" | "custom";
+export type LivingSize = "7x10" | "10x13" | "12x18" | "15x20" | "custom";
+export type KitchenSize = "8x10" | "10x12" | "12x14" | "custom";
 export type KitchenType = "Parallel" | "L-shaped" | "Island";
-export type PoojaSize = "9x9" | "3x3";
+export type PoojaSize = "9x9" | "3x3" | "custom";
+export type BedroomRole = "Master" | "Kid" | "Guest" | "Other";
+export type RoomPreset =
+  | "Bare"
+  | "Essentials"
+  | "Storage+Study"
+  | "Feature Wall";
+export type TVPanelMode = "percent" | "sqft";
+export type TVPanelPreset = "Small" | "Medium" | "Feature";
 
-export type RoomSet = {
-  master: {
-    size: BedroomSize;
-    wardrobe: { enabled: boolean; pkgOverride?: Package | null };
-    studyTable: { enabled: boolean; pkgOverride?: Package | null };
-    tvUnit: { enabled: boolean; pkgOverride?: Package | null };
-    bedBackPanel: { enabled: boolean; pkgOverride?: Package | null };
-  };
-  children: {
-    size: BedroomSize;
-    wardrobe: { enabled: boolean; pkgOverride?: Package | null };
-    studyTable: { enabled: boolean; pkgOverride?: Package | null };
-    bedBackPanel: { enabled: boolean; pkgOverride?: Package | null };
-  };
-  guest: {
-    size: BedroomSize;
-    wardrobe: { enabled: boolean; pkgOverride?: Package | null };
-    studyTable: { enabled: boolean; pkgOverride?: Package | null };
-    bedBackPanel: { enabled: boolean; pkgOverride?: Package | null };
-  };
-  living: {
-    size: LivingSize;
-    tvDrawerUnit: { enabled: boolean; pkgOverride?: Package | null };
-    tvPanel: {
-      enabled: boolean;
-      panelSqft?: number;
-      pkgOverride?: Package | null;
-    };
-  };
-  pooja: {
-    size: PoojaSize;
-    unit: { enabled: boolean; pkgOverride?: Package | null };
-    doors: { enabled: boolean; qty?: number; pkgOverride?: Package | null };
-  };
-  kitchen: {
+export interface RoomItem {
+  enabled: boolean;
+  pkgOverride?: Package;
+}
+
+export interface RoomItemWithQty extends RoomItem {
+  qty: number;
+}
+
+export interface BedroomItems {
+  wardrobe: RoomItem;
+  studyTable: RoomItem;
+  tvUnit?: RoomItem;
+  bedBackPanel: RoomItem;
+}
+
+export interface Bedroom {
+  id: string;
+  role: BedroomRole;
+  size: BedroomSize;
+  customSize?: string;
+  items: BedroomItems;
+}
+
+export interface LivingRoom {
+  size: LivingSize;
+  customSize?: string;
+  tvDrawerUnit: RoomItem;
+  tvPanel: {
     enabled: boolean;
-    type?: KitchenType;
-    size?: KitchenSize;
-    baseUnit: { enabled: boolean; pkgOverride?: Package | null };
-    tandemBaskets: {
-      enabled: boolean;
-      qty?: number;
-      pkgOverride?: Package | null;
-    };
-    bottlePullout: {
-      enabled: boolean;
-      qty?: number;
-      pkgOverride?: Package | null;
-    };
-    cornerUnit: { enabled: boolean; pkgOverride?: Package | null };
-    wickerBasket: { enabled: boolean; pkgOverride?: Package | null };
+    mode: TVPanelMode;
+    panelPercent?: number;
+    panelSqft?: number;
+    pkgOverride?: Package;
   };
-};
+}
 
-export type AddOns = {
-  sofa: { enabled: boolean; qty?: number; pkgOverride?: Package | null };
-  diningTable: { enabled: boolean; qty?: number; pkgOverride?: Package | null };
-  carpets: { enabled: boolean; qty?: number; pkgOverride?: Package | null };
-  designerLights: {
-    enabled: boolean;
-    qty?: number;
-    pkgOverride?: Package | null;
-  };
-  curtains: { enabled: boolean; qty?: number; pkgOverride?: Package | null };
-};
+export interface PoojaRoom {
+  size: PoojaSize;
+  customSize?: string;
+  doors: RoomItemWithQty;
+}
 
-export type EstimatorState = {
+export interface Kitchen {
+  type: KitchenType;
+  size: KitchenSize;
+  customSize?: string;
+  baseUnit: RoomItem;
+  tandemBaskets: RoomItemWithQty;
+  bottlePullout: RoomItemWithQty;
+  cornerUnit: RoomItem;
+  wickerBasket: RoomItem;
+}
+
+export interface RoomsState {
+  prefilled: boolean;
+  bedrooms: Bedroom[];
+  living: LivingRoom;
+  kitchen: Kitchen;
+  pooja: PoojaRoom;
+}
+
+export interface SingleLineItem {
+  enabled: boolean;
+  areaMode?: "percent" | "sqft";
+  areaPercent?: number;
+  areaSqft: number;
+  pkgOverride?: Package;
+}
+
+export type AddonKey =
+  | "sofa"
+  | "diningTable"
+  | "curtains"
+  | "lights"
+  | "wallpaper"
+  | "mirrors"
+  | "plants";
+
+export interface AddonItem {
+  enabled: boolean;
+  qty: number;
+  pkgOverride?: Package;
+}
+
+export type AddonsState = Record<AddonKey, AddonItem>;
+
+export interface Basics {
+  carpetAreaSqft: number;
+  bhk?: BHK;
+  pkg?: Package;
+  areaSource: AreaSource;
+  derivedSqft?: number;
+}
+
+export interface SingleLine {
+  falseCeiling: SingleLineItem;
+  painting: SingleLineItem;
+  electricalWiring: SingleLineItem;
+}
+
+export interface Addons {
+  sofa: AddonItem;
+  diningTable: AddonItem;
+  curtains: AddonItem;
+  lights: AddonItem;
+  wallpaper: AddonItem;
+  mirrors: AddonItem;
+  plants: AddonItem;
+}
+
+export interface Rooms {
+  bedrooms: Bedroom[];
+  living: LivingRoom;
+  pooja: PoojaRoom;
+  kitchen: Kitchen;
+  prefilled: boolean;
+}
+
+export interface EstimatorState {
   basics: Basics;
-  single: SingleLine;
-  rooms: RoomSet;
-  addons: AddOns;
-  totals: {
-    low: number;
-    high: number;
-    byCategory: Record<string, { low: number; high: number }>;
-  };
-};
+  singleLine: SingleLine;
+  rooms: Rooms;
+  addons: Addons;
+}
 
-export type PriceRange = {
+export interface LineItem {
+  label: string;
   low: number;
   high: number;
-};
+}
 
-export type ExactLine = {
-  category:
-    | "Single Line Items"
-    | "Bedrooms"
-    | "Living Room"
-    | "Kitchen"
-    | "Pooja Room"
-    | "Add-ons";
-  item: string;
-  pkg: Package;
-  details?: string; // e.g., "10x12 • 25 sqft × ₹3,000"
-  quantity?: number; // optional count
-  amount: number; // exact ₹
-};
+export interface CategoryBreakdown {
+  label: string;
+  low: number;
+  high: number;
+  items: LineItem[];
+}
 
-export type ExactBreakdown = {
-  lines: ExactLine[];
-  totalsByCategory: Record<ExactLine["category"], number>;
-  grandTotal: number;
-};
-
-export const pkgFor = (
-  override: Package | null | undefined,
-  globalPkg: Package
-): Package => override ?? globalPkg;
+export interface RangeBreakdown {
+  categories: CategoryBreakdown[];
+  grandLow: number;
+  grandHigh: number;
+}

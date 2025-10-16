@@ -1,84 +1,68 @@
-// app/api/otp/wa/request/route.ts
-import { NextResponse } from "next/server";
-import { genOtp, storeOtp } from "@/lib/otp";
+// pages/api/otp/wa/request.ts
+import type { NextApiRequest, NextApiResponse } from "next";
 
-// Convert digits to E.164 (+91 default)
-function toE164(input: string) {
-  const digits = String(input || "").replace(/[^\d]/g, "");
-  if (!digits) return "";
-  // strip leading zeros
-  const trimmed = digits.replace(/^0+/, "");
-  // if already starts with 91 and length > 10, assume it's full Indian E.164
-  if (trimmed.startsWith("91") && trimmed.length > 10) return `+${trimmed}`;
-  // default to India
-  return `+91${trimmed}`;
+function toE164India(raw: string) {
+  const d = (raw || "").replace(/\D/g, "");
+  if (!d) return "";
+  if (d.length === 10) return `+91${d}`;
+  if (d.startsWith("91") && d.length > 10) return `+${d}`;
+  return `+${d}`;
 }
 
-function json(data: any, status = 200) {
-  return NextResponse.json(data, { status });
-}
-
-export async function POST(req: Request) {
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse
+) {
   try {
-    const { phone } = await req.json().catch(() => ({ phone: "" }));
-    const to = toE164(phone);
+    if (req.method !== "POST") return res.status(405).json({ ok: false });
 
-    // E.164 sanity check
-    if (!/^\+\d{10,15}$/.test(to)) {
-      return json({ ok: false, error: "bad_phone" }, 400);
+    const { phone, name, email, consentConnect, consentCall } = req.body || {};
+    const destination = toE164India(String(phone || ""));
+    if (!/^\+\d{10,15}$/.test(destination)) {
+      return res.status(400).json({ ok: false, error: "bad_phone" });
     }
 
-    // ---- env checks ----
-    const SEND_URL = process.env.AISENSY_SEND_URL;
-    const API_KEY = process.env.AISENSY_API_KEY;
-    const TEMPLATE = process.env.AISENSY_TEMPLATE_NAME;
-    const LANG = process.env.AISENSY_TEMPLATE_LANG || "en";
+    // 6-digit OTP
+    const code = String(Math.floor(100000 + Math.random() * 900000));
 
-    if (!SEND_URL || !API_KEY || !TEMPLATE) {
-      return json(
-        {
-          ok: false,
-          error: "misconfigured",
-          detail:
-            "Missing AISENSY_SEND_URL / AISENSY_API_KEY / AISENSY_TEMPLATE_NAME",
-        },
-        500
-      );
-    }
-
-    // ---- generate & persist OTP with your existing logic ----
-    const ttlSec = parseInt(process.env.OTP_TTL_SEC || "300", 10);
-    const otp = genOtp(6);
-    await storeOtp(to, otp);
-
-    const payload = {
-      template_name: TEMPLATE,
-      language_code: LANG,
-      phone_number: to,
-
-      parameters: [{ type: "text", text: otp }],
-      broadcast_name: "OTP",
-    };
-
-    const aiRes = await fetch(SEND_URL, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
+    // store the OTP server-side (replace with your store)
+    // example quick memory store:
+    (global as any).__otp ||= new Map<string, { code: string; exp: number }>();
+    (global as any).__otp.set(destination, {
+      code,
+      exp: Date.now() + 5 * 60_000,
     });
 
-    if (!aiRes.ok) {
-      const detail = await aiRes.text().catch(() => "");
-      return json({ ok: false, error: "send_failed", detail }, 502);
+    const body = {
+      apiKey: process.env.AISENSY_API_KEY,
+      campaignName: process.env.AISENSY_CAMPAIGN_NAME, // "Interior Otp"
+      destination,
+      userName: name || "Guest",
+      source: process.env.AISENSY_SOURCE || "website",
+      templateParams: [code],
+      tags: ["otp"],
+      attributes: {
+        email: email || "",
+        consent_connect: String(!!consentConnect),
+        consent_call: String(!!consentCall),
+      },
+    };
+
+    const r = await fetch("https://backend.aisensy.com/campaign/t1/api/v2", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    if (!r.ok) {
+      const txt = await r.text();
+      console.error("AiSensy error:", r.status, txt);
+      return res.status(502).json({ ok: false, error: "aisensy_failed" });
     }
 
-    return json({ ok: true, expiresInSec: ttlSec });
-  } catch (e: any) {
-    return json(
-      { ok: false, error: "server_error", detail: String(e?.message || e) },
-      500
-    );
+    return res.status(200).json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ ok: false, error: "server_error" });
   }
 }

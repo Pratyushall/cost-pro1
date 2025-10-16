@@ -1,5 +1,11 @@
 import { rates } from "./pricing";
-import type { EstimatorState, Package } from "./types";
+import type {
+  EstimatorState,
+  Package,
+  Bedroom,
+  AddonKey,
+  AddonItem,
+} from "./types";
 
 export type ExactLine = {
   category:
@@ -52,7 +58,7 @@ export function computeExactBreakdown(state: EstimatorState): ExactBreakdown {
   const G = state.basics.pkg as Package;
 
   // -------- Single Line --------
-  const SL = state.single;
+  const SL = state.singleLine;
   const areaDefault = state.basics.carpetAreaSqft || 0;
 
   if (SL.falseCeiling?.enabled) {
@@ -92,16 +98,14 @@ export function computeExactBreakdown(state: EstimatorState): ExactBreakdown {
     );
   }
 
-  // bedroom helper
-  const addBedroom = (
-    label: string,
-    size: "14x16" | "10x12" | "10x10" | "11.5x11.5",
-    room: any
-  ) => {
-    if (room.wardrobe?.enabled) {
-      const pkg = pkgFor(room.wardrobe.pkgOverride, G);
-      const area = rates.wardrobeArea[pkg][size];
-      const rate = rates.wardrobePricePerSqft[pkg][size];
+  const addBedroom = (label: string, size: string, room: Bedroom) => {
+    // Type assertion for size to handle custom sizes
+    const bedroomSize = size as "14x16" | "10x12" | "10x10" | "11.5x11.5";
+
+    if (room.items?.wardrobe?.enabled) {
+      const pkg = pkgFor(room.items.wardrobe.pkgOverride, G);
+      const area = rates.wardrobeArea[pkg][bedroomSize] || 0;
+      const rate = rates.wardrobePricePerSqft[pkg][bedroomSize] || 0;
       add(
         "Bedrooms",
         `${label} • Wardrobe`,
@@ -110,10 +114,10 @@ export function computeExactBreakdown(state: EstimatorState): ExactBreakdown {
         `${size} • ${fmt(area)} sqft × ₹${fmt(rate)}`
       );
     }
-    if (room.studyTable?.enabled) {
-      const pkg = pkgFor(room.studyTable.pkgOverride, G);
-      const area = rates.studyTableAreaSqft[size];
-      const rate = rates.studyTablePricePerSqft[pkg][size];
+    if (room.items?.studyTable?.enabled) {
+      const pkg = pkgFor(room.items.studyTable.pkgOverride, G);
+      const area = rates.studyTableAreaSqft[bedroomSize] || 0;
+      const rate = rates.studyTablePricePerSqft[pkg][bedroomSize] || 0;
       add(
         "Bedrooms",
         `${label} • Study Table`,
@@ -122,10 +126,10 @@ export function computeExactBreakdown(state: EstimatorState): ExactBreakdown {
         `${size} • ${fmt(area)} sqft × ₹${fmt(rate)}`
       );
     }
-    if (room.tvUnit?.enabled) {
-      const pkg = pkgFor(room.tvUnit.pkgOverride, G);
-      const area = rates.tvUnitAreaSqftBedroom[size];
-      const rate = rates.tvUnitPricePerSqftBedroom[pkg][size];
+    if (room.items?.tvUnit?.enabled) {
+      const pkg = pkgFor(room.items.tvUnit.pkgOverride, G);
+      const area = rates.tvUnitAreaSqftBedroom[bedroomSize] || 0;
+      const rate = rates.tvUnitPricePerSqftBedroom[pkg][bedroomSize] || 0;
       add(
         "Bedrooms",
         `${label} • TV Unit`,
@@ -134,10 +138,10 @@ export function computeExactBreakdown(state: EstimatorState): ExactBreakdown {
         `${size} • ${fmt(area)} sqft × ₹${fmt(rate)}`
       );
     }
-    if (room.bedBackPanel?.enabled) {
-      const pkg = pkgFor(room.bedBackPanel.pkgOverride, G);
-      const area = rates.bedBackPanelAreaSqft[size];
-      const rate = rates.bedBackPanelPricePerSqft[size];
+    if (room.items?.bedBackPanel?.enabled) {
+      const pkg = pkgFor(room.items.bedBackPanel.pkgOverride, G);
+      const area = rates.bedBackPanelAreaSqft[bedroomSize] || 0;
+      const rate = rates.bedBackPanelPricePerSqft[bedroomSize] || 0;
       add(
         "Bedrooms",
         `${label} • Bed Back Panel`,
@@ -148,25 +152,24 @@ export function computeExactBreakdown(state: EstimatorState): ExactBreakdown {
     }
   };
 
-  addBedroom("Master Bedroom", state.rooms.master.size, state.rooms.master);
-  addBedroom(
-    "Children Bedroom",
-    state.rooms.children.size,
-    state.rooms.children
-  );
-  addBedroom("Guest Bedroom", state.rooms.guest.size, state.rooms.guest);
+  state.rooms.bedrooms.forEach((bedroom) => {
+    const label = `${bedroom.role} Bedroom`;
+    addBedroom(label, bedroom.size, bedroom);
+  });
 
   // -------- Living --------
   const L = state.rooms.living;
   if (L?.tvDrawerUnit?.enabled) {
     const pkg = pkgFor(L.tvDrawerUnit.pkgOverride, G);
-    const rate = rates.tvDrawerUnitPrice[pkg][L.size];
+    const livingSize = L.size as "7x10" | "10x13" | "12x18" | "15x20";
+    const rate = rates.tvDrawerUnitPrice[pkg][livingSize] || 0;
     add("Living Room", "TV Drawer Unit", pkg, rate, `${L.size}`);
   }
   if (L?.tvPanel?.enabled) {
     const pkg = pkgFor(L.tvPanel.pkgOverride, G);
     const sqft = Number(L.tvPanel.panelSqft || 0);
-    const rate = rates.tvPanelPricePerSqft[pkg][L.size];
+    const livingSize = L.size as "7x10" | "10x13" | "12x18" | "15x20";
+    const rate = rates.tvPanelPricePerSqft[pkg][livingSize] || 0;
     if (sqft > 0)
       add(
         "Living Room",
@@ -179,84 +182,74 @@ export function computeExactBreakdown(state: EstimatorState): ExactBreakdown {
 
   // -------- Kitchen --------
   const K = state.rooms.kitchen;
-  if (K?.enabled && K.size && K.type) {
-    const area = rates.kitchenAreaSqft[K.type][K.size];
+  if (K?.baseUnit?.enabled && K.size && K.type) {
+    const kitchenType = K.type as "Parallel" | "L-shaped" | "Island";
+    const kitchenSize = K.size as "8x10" | "10x12" | "12x14";
+    const area = rates.kitchenAreaSqft[kitchenType][kitchenSize] || 0;
 
-    if (K.baseUnit?.enabled) {
-      const pkg = pkgFor(K.baseUnit.pkgOverride, G);
-      const rate = rates.kitchenBasePricePerSqft[pkg];
+    const pkg = pkgFor(K.baseUnit.pkgOverride, G);
+    const rate = rates.kitchenBasePricePerSqft[pkg];
+    add(
+      "Kitchen",
+      "Base Unit",
+      pkg,
+      area * rate,
+      `${K.type} • ${K.size} • ${fmt(area)} sqft × ₹${fmt(rate)}`
+    );
+  }
+  if (K?.tandemBaskets?.enabled) {
+    const pkg = pkgFor(K.tandemBaskets.pkgOverride, G);
+    const qty = Number(K.tandemBaskets.qty || 0);
+    const rate = rates.kitchenAccessories.tandemBasket[pkg];
+    if (qty > 0)
       add(
         "Kitchen",
-        "Base Unit",
+        "Tandem Baskets",
         pkg,
-        area * rate,
-        `${K.type} • ${K.size} • ${fmt(area)} sqft × ₹${fmt(rate)}`
+        qty * rate,
+        `${qty} × ₹${fmt(rate)}`
       );
-    }
-    if (K.tandemBaskets?.enabled) {
-      const pkg = pkgFor(K.tandemBaskets.pkgOverride, G);
-      const qty = Number(K.tandemBaskets.qty || 0);
-      const rate = rates.kitchenAccessories.tandemBasket[pkg];
-      if (qty > 0)
-        add(
-          "Kitchen",
-          "Tandem Baskets",
-          pkg,
-          qty * rate,
-          `${qty} × ₹${fmt(rate)}`
-        );
-    }
-    if (K.bottlePullout?.enabled) {
-      const pkg = pkgFor(K.bottlePullout.pkgOverride, G);
-      const qty = Number(K.bottlePullout.qty || 0);
-      const rate = rates.kitchenAccessories.bottlePullout[pkg];
-      if (qty > 0)
-        add(
-          "Kitchen",
-          "Bottle Pullout",
-          pkg,
-          qty * rate,
-          `${qty} × ₹${fmt(rate)}`
-        );
-    }
-    if (K.cornerUnit?.enabled) {
-      const pkg = pkgFor(K.cornerUnit.pkgOverride, G);
-      const rate = rates.kitchenAccessories.cornerUnit[pkg];
-      add("Kitchen", "Corner Unit", pkg, rate);
-    }
-    if (K.wickerBasket?.enabled) {
-      const pkg = pkgFor(K.wickerBasket.pkgOverride, G);
-      const rate = rates.kitchenAccessories.wickerBasket[pkg];
-      add("Kitchen", "Wicker Basket", pkg, rate);
-    }
+  }
+  if (K?.bottlePullout?.enabled) {
+    const pkg = pkgFor(K.bottlePullout.pkgOverride, G);
+    const qty = Number(K.bottlePullout.qty || 0);
+    const rate = rates.kitchenAccessories.bottlePullout[pkg];
+    if (qty > 0)
+      add(
+        "Kitchen",
+        "Bottle Pullout",
+        pkg,
+        qty * rate,
+        `${qty} × ₹${fmt(rate)}`
+      );
+  }
+  if (K?.cornerUnit?.enabled) {
+    const pkg = pkgFor(K.cornerUnit.pkgOverride, G);
+    const rate = rates.kitchenAccessories.cornerUnit[pkg];
+    add("Kitchen", "Corner Unit", pkg, rate);
+  }
+  if (K?.wickerBasket?.enabled) {
+    const pkg = pkgFor(K.wickerBasket.pkgOverride, G);
+    const rate = rates.kitchenAccessories.wickerBasket[pkg];
+    add("Kitchen", "Wicker Basket", pkg, rate);
   }
 
   // -------- Pooja --------
   const P = state.rooms.pooja;
-  if (P?.unit?.enabled) {
-    const pkg = pkgFor(P.unit.pkgOverride, G);
-    const area = rates.poojaUnitAreaSqft[P.size];
-    const rate = rates.poojaPricePerSqft[pkg][P.size];
-    add(
-      "Pooja Room",
-      "Pooja Unit",
-      pkg,
-      area * rate,
-      `${P.size} • ${fmt(area)} sqft × ₹${fmt(rate)}`
-    );
-  }
   if (P?.doors?.enabled) {
     const pkg = pkgFor(P.doors.pkgOverride, G);
     const qty = Number(P.doors.qty || 0);
-    const rate = rates.poojaDoorPrice[pkg][P.size];
+    const poojaSize = P.size as "9x9" | "3x3";
+    const rate = rates.poojaDoorPrice[pkg][poojaSize] || 0;
     if (qty > 0)
       add("Pooja Room", "Doors", pkg, qty * rate, `${qty} × ₹${fmt(rate)}`);
   }
 
   // -------- Add-ons --------
   const A = state.addons;
-  const bhk = state.basics.bhk as "2bhk" | "3bhk" | "4bhk";
-  const addOn = (key: keyof typeof rates.addOns, label: string, node: any) => {
+  const bhk = (state.basics.bhk || "2bhk") as "2bhk" | "3bhk" | "4bhk";
+
+  const addOn = (key: AddonKey, label: string, node: AddonItem | undefined) => {
     if (!node?.enabled) return;
     const pkg = pkgFor(node.pkgOverride, G);
     const qty = Number(node.qty || 0);
@@ -264,11 +257,14 @@ export function computeExactBreakdown(state: EstimatorState): ExactBreakdown {
     if (qty > 0)
       add("Add-ons", label, pkg, qty * price, `${qty} × ₹${fmt(price)}`);
   };
+
   addOn("sofa", "Sofa", A.sofa);
   addOn("diningTable", "Dining Table", A.diningTable);
-  addOn("carpets", "Carpets", A.carpets);
-  addOn("designerLights", "Designer Lights", A.designerLights);
   addOn("curtains", "Curtains", A.curtains);
+  addOn("lights", "Designer Lights", A.lights);
+  addOn("wallpaper", "Wallpaper", A.wallpaper);
+  addOn("mirrors", "Mirrors", A.mirrors);
+  addOn("plants", "Plants", A.plants);
 
   const grandTotal = Object.values(catTotal).reduce((a, b) => a + b, 0);
   return { lines, totalsByCategory: catTotal, grandTotal };

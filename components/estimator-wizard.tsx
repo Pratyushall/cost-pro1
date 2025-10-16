@@ -1,47 +1,61 @@
 "use client";
 
+import { StepBasics } from "@/components/steps/step-basics";
+import { StepSingleLine } from "@/components/steps/step-single-line";
+import { StepRooms } from "@/components/steps/step-rooms";
+import { StepAddons } from "@/components/steps/step-addons";
+import { StepSummary } from "@/components/steps/step-summary";
+import { Badge } from "@/components/ui/badge";
 import { useEstimatorStore } from "@/store/estimator";
-import { StepIndicator } from "./step-indicator";
-import { StepBasics } from "./steps/step-basics";
-import { StepSingleLine } from "./steps/step-single-line";
-import { StepRooms } from "./steps/step-rooms";
-import { StepAddons } from "./steps/step-addons";
-import { StepSummary } from "./steps/step-summary";
-import { Card } from "./ui/card";
 
-const steps = [
-  { id: 1, title: "Basics", component: StepBasics },
-  { id: 2, title: "Single Line Items", component: StepSingleLine },
-  { id: 3, title: "Rooms & Items", component: StepRooms },
-  { id: 4, title: "Add-Ons", component: StepAddons },
-  { id: 5, title: "Summary", component: StepSummary },
-];
+const STEPS = [
+  { id: 1, name: "Basics", component: StepBasics },
+  { id: 2, name: "Scope", component: StepSingleLine },
+  { id: 3, name: "Rooms", component: StepRooms },
+  { id: 4, name: "Add-ons", component: StepAddons },
+  { id: 5, name: "Summary", component: StepSummary },
+] as const;
 
 export function EstimatorWizard() {
-  const { currentStep } = useEstimatorStore();
-  const CurrentStepComponent =
-    steps.find((step) => step.id === currentStep)?.component || StepBasics;
+  const { currentStep, setCurrentStep } = useEstimatorStore();
+
+  const CurrentStepComponent = STEPS[currentStep - 1].component;
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="container mx-auto px-4 py-8 max-w-4xl">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-black mb-2">
-            Interior Cost Estimator
-          </h1>
-          <p className="text-gray-600 text-lg">
-            Get an approximate cost estimate for your interior design project
-          </p>
-        </div>
+    <div className="space-y-8 p-6 min-h-screen">
+      {/* Progress indicator with glassmorphism */}
+      <div className="flex items-center justify-center gap-3">
+        {STEPS.map((step, index) => (
+          <div key={step.id} className="flex items-center">
+            <Badge
+              variant={
+                currentStep === step.id
+                  ? "default"
+                  : currentStep > step.id
+                  ? "secondary"
+                  : "outline"
+              }
+              className={`cursor-pointer transition-all text-base px-5 py-2.5 font-semibold ${
+                currentStep === step.id
+                  ? "bg-primary text-primary-foreground shadow-xl scale-110 backdrop-blur-sm"
+                  : currentStep > step.id
+                  ? "bg-secondary text-secondary-foreground shadow-lg backdrop-blur-sm"
+                  : "bg-white/30 backdrop-blur-md text-foreground border-white/40 shadow-md"
+              }`}
+              onClick={() => setCurrentStep(step.id)}
+            >
+              {step.name}
+            </Badge>
+            {index < STEPS.length - 1 && (
+              <div className="w-12 h-0.5 bg-white/40 backdrop-blur-sm mx-2 shadow-sm" />
+            )}
+          </div>
+        ))}
+      </div>
 
-        {/* Step Indicator */}
-        <StepIndicator steps={steps} currentStep={currentStep} />
-
-        {/* Main Content */}
-        <Card className="elegant-card p-8 mt-8">
-          <CurrentStepComponent />
-        </Card>
+      {/* Current step */}
+      <div className="max-w-4xl mx-auto">
+        <CurrentStepComponent />
       </div>
     </div>
   );
