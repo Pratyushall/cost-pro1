@@ -1,34 +1,44 @@
+// app/api/calculate/route.ts
 import { type NextRequest, NextResponse } from "next/server";
-import { calculateExactTotals, convertToRanges } from "@/lib/calc";
-import type { EstimatorState } from "@/lib/types";
+import { computeExactBreakdown } from "@/lib/compute-exact-breakdown";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
+function toRanges(exact: ReturnType<typeof computeExactBreakdown>) {
+  const band = 0.1;
+  const byCategory = Object.fromEntries(
+    Object.entries(exact.totalsByCategory).map(([k, v]) => [
+      k,
+      {
+        low: Math.max(0, Math.round(v * (1 - band))),
+        high: Math.round(v * (1 + band)),
+      },
+    ])
+  );
+  const grandTotal = {
+    low: Math.max(0, Math.round(exact.grandTotal * (1 - band))),
+    high: Math.round(exact.grandTotal * (1 + band)),
+  };
+  return { byCategory, grandTotal };
+}
 
 export async function POST(request: NextRequest) {
   try {
-    const state: EstimatorState = await request.json();
-
-    // Calculate exact totals server-side (never exposed to client)
-    const exactTotals = calculateExactTotals(state);
-
-    // Convert to ranges for client display
-    const ranges = convertToRanges(exactTotals);
-
-    // Log for analytics (no exact prices)
-    console.log("[v0] Estimate generated:", {
-      bhk: state.basics.bhk,
-      pkg: state.basics.pkg,
-      carpetArea: state.basics.carpetAreaSqft,
-      rangeTotal: `${ranges.grandTotal.low} - ${ranges.grandTotal.high}`,
-    });
-
-    return NextResponse.json({
-      success: true,
-      ranges,
-      // Never return exact totals to client
-    });
-  } catch (error) {
-    console.error("Calculation error:", error);
+    const state = await request.json();
+    if (!state || typeof state !== "object") {
+      return NextResponse.json(
+        { success: false, error: "bad_input" },
+        { status: 400 }
+      );
+    }
+    const exact = computeExactBreakdown(state);
+    const ranges = toRanges(exact);
+    return NextResponse.json({ success: true, breakdown: exact, ranges });
+  } catch (e: any) {
     return NextResponse.json(
-      { success: false, error: "Failed to calculate estimate" },
+      { success: false, error: "server_error", detail: e?.message },
       { status: 500 }
     );
   }

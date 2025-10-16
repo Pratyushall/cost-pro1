@@ -1,3 +1,4 @@
+// lib/compute-exact-breakdown.ts
 import { rates } from "./pricing";
 import type {
   EstimatorState,
@@ -98,8 +99,8 @@ export function computeExactBreakdown(state: EstimatorState): ExactBreakdown {
     );
   }
 
+  // -------- Bedrooms --------
   const addBedroom = (label: string, size: string, room: Bedroom) => {
-    // Type assertion for size to handle custom sizes
     const bedroomSize = size as "14x16" | "10x12" | "10x10" | "11.5x11.5";
 
     if (room.items?.wardrobe?.enabled) {
@@ -186,7 +187,6 @@ export function computeExactBreakdown(state: EstimatorState): ExactBreakdown {
     const kitchenType = K.type as "Parallel" | "L-shaped" | "Island";
     const kitchenSize = K.size as "8x10" | "10x12" | "12x14";
     const area = rates.kitchenAreaSqft[kitchenType][kitchenSize] || 0;
-
     const pkg = pkgFor(K.baseUnit.pkgOverride, G);
     const rate = rates.kitchenBasePricePerSqft[pkg];
     add(
@@ -245,7 +245,7 @@ export function computeExactBreakdown(state: EstimatorState): ExactBreakdown {
       add("Pooja Room", "Doors", pkg, qty * rate, `${qty} × ₹${fmt(rate)}`);
   }
 
-  // -------- Add-ons --------
+  // -------- Add-ons (only these four remain) --------
   const A = state.addons;
   const bhk = (state.basics.bhk || "2bhk") as "2bhk" | "3bhk" | "4bhk";
 
@@ -258,13 +258,10 @@ export function computeExactBreakdown(state: EstimatorState): ExactBreakdown {
       add("Add-ons", label, pkg, qty * price, `${qty} × ₹${fmt(price)}`);
   };
 
-  addOn("sofa", "Sofa", A.sofa);
-  addOn("diningTable", "Dining Table", A.diningTable);
-  addOn("curtains", "Curtains", A.curtains);
-  addOn("lights", "Designer Lights", A.lights);
-  addOn("wallpaper", "Wallpaper", A.wallpaper);
-  addOn("mirrors", "Mirrors", A.mirrors);
-  addOn("plants", "Plants", A.plants);
+  addOn("sofa", "Sofa", A?.sofa);
+  addOn("diningTable", "Dining Table", A?.diningTable);
+  addOn("curtains", "Curtains", A?.curtains);
+  addOn("lights", "Designer Lights", A?.lights);
 
   const grandTotal = Object.values(catTotal).reduce((a, b) => a + b, 0);
   return { lines, totalsByCategory: catTotal, grandTotal };
