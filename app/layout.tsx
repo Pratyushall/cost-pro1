@@ -63,7 +63,7 @@ export default function RootLayout({
         <SessionGuard estimatorRoot="/estimator">
           <Suspense fallback={null}>
             {/* global page heading (top of every page) */}
-            <header className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-6">
+            <header className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8 pt-6">
               <div className="flex justify-center">
                 <div className="card-glass rounded-xl px-5 py-4 w-full sm:w-auto">
                   <h1 className="heading-md text-center">
@@ -74,7 +74,7 @@ export default function RootLayout({
             </header>
 
             {/* main layout container */}
-            <div className="app-safe-area mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
+            <div className="app-safe-area mx-auto max-w-7xl px-3 sm:px-6 lg:px-8 py-6 pb-safe">
               <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px] xl:grid-cols-[minmax(0,1fr)_320px]">
                 <main className="min-w-0">{children}</main>
 
@@ -88,7 +88,7 @@ export default function RootLayout({
             </div>
 
             {/* global bottom disclaimer (faded but visible) */}
-            <footer className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-8">
+            <footer className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8 pb-8 pb-safe">
               <div className="card-glass rounded-xl px-6 py-5">
                 <h2 className="text-base font-semibold text-foreground/80">
                   Disclaimer
