@@ -251,10 +251,10 @@ export function StepBasics() {
         {/* Header Section with Primary Color */}
         <div className="section-header">
           <h2 className="text-4xl font-bold text-primary-foreground mb-3">
-            Let's Begin!
+            Let&apos;s Begin!
           </h2>
           <p className="text-primary-foreground/90 text-lg leading-relaxed">
-            Choose a couple of basics and we'll take care of the math.
+            Choose a couple of basics and we&apos;ll take care of the math.
           </p>
         </div>
 
@@ -280,8 +280,8 @@ export function StepBasics() {
             />
 
             <p className="field-hint text-base">
-              Not sure now? Pick an approximate below or we'll guess—you can
-              edit later.
+              Not sure now? Pick an approximate below or we&apos;ll guess—you
+              can edit later.
             </p>
 
             {/* Approximate Range Selector */}
