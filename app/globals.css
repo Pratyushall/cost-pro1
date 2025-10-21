@@ -385,15 +385,58 @@ iframe {
   }
 }
 
-/* =========================================================
-   ===== Ad image overlay badge (Sponsored pill + watermark)
-   ========================================================= */
+/* ===== Mobile helpers ===== */
+.pb-safe {
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
+}
+.mb-safe {
+  margin-bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
+}
+.sticky-cta {
+  position: sticky;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 10px);
+  z-index: 30;
+}
+.mobile-card {
+  padding: 1.25rem;
+}
+@media (min-width: 640px) {
+  .mobile-card {
+    padding: 2rem;
+  }
+}
+.mobile-field {
+  height: 3rem;
+  font-size: 16px;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+.mobile-select {
+  height: 3rem;
+  font-size: 16px;
+  padding-left: 0.875rem;
+  padding-right: 0.875rem;
+}
+.btn-mobile {
+  width: 100%;
+  height: 3rem;
+  touch-action: manipulation;
+}
+@media (max-width: 400px) {
+  .card-glass {
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.08);
+  }
+  .calculator-card {
+    box-shadow: 0 10px 22px rgba(0, 0, 0, 0.09);
+  }
+}
+
+/* ===== Ad image overlay badge (Sponsored pill + watermark) ===== */
 .ad-wrap {
   position: relative;
   border-radius: 14px;
-  overflow: hidden; /* clip badge to image radius */
+  overflow: hidden;
 }
-
 .ad-label {
   position: absolute;
   top: 8px;
@@ -408,28 +451,24 @@ iframe {
   font-weight: 700;
   letter-spacing: 0.03em;
   text-transform: uppercase;
-
   background: rgba(255, 255, 255, 0.9);
   -webkit-backdrop-filter: saturate(180%) blur(8px);
   backdrop-filter: saturate(180%) blur(8px);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
   border: 1px solid rgba(0, 0, 0, 0.06);
 }
-
 .ad-label .ad-i {
   display: grid;
   place-items: center;
   width: 16px;
   height: 16px;
   border-radius: 9999px;
-  background: #3b82f6; /* Tailwind blue-500 */
+  background: #3b82f6;
   color: #fff;
   font-size: 10px;
   line-height: 1;
   font-weight: 900;
 }
-
-/* Optional faint watermark */
 .ad-wrap::after {
   content: "ADVERTISEMENT";
   position: absolute;
@@ -442,125 +481,4 @@ iframe {
   color: rgba(0, 0, 0, 0.25);
   transform: rotate(-5deg);
   pointer-events: none;
-}
-// app/layout.tsx
-import type React from "react";
-import type { Metadata, Viewport } from "next";
-import { GeistSans } from "geist/font/sans";
-import { GeistMono } from "geist/font/mono";
-import { Analytics } from "@vercel/analytics/next";
-import { Suspense } from "react";
-import Script from "next/script";
-import Link from "next/link";
-import "./globals.css";
-
-import SessionGuard from "@/components/SessionGuard";
-import RightRail from "@/components/RightRail";
-
-export const metadata: Metadata = {
-  title: "Interior Design Calculator",
-  description:
-    "Quick, transparent interior design cost estimates—for kitchens, bedrooms, living rooms and more.",
-  icons: [{ rel: "icon", url: "/favicon.ico" }],
-  manifest: "/site.webmanifest",
-  other: {
-    "apple-mobile-web-app-capable": "yes",
-    "apple-mobile-web-app-status-bar-style": "default",
-  },
-};
-
-export const viewport: Viewport = {
-  width: "device-width",
-  initialScale: 1,
-  viewportFit: "cover",
-};
-
-export default function RootLayout({
-  children,
-}: Readonly<{ children: React.ReactNode }>) {
-  const timeoutMin = Number(process.env.NEXT_PUBLIC_SESSION_TIMEOUT_MIN ?? 30);
-  const timeoutMs = timeoutMin * 60 * 1000;
-
-  return (
-    <html lang="en" className="h-full">
-      <body
-        className={`h-full antialiased font-sans ${GeistSans.variable} ${GeistMono.variable} min-h-screen overflow-y-auto bg-app`}
-      >
-        {/* runs before any React/rehydration */}
-        <Script id="icp-prehydrate-cleanup" strategy="beforeInteractive">
-          {`
-  (function(){
-    try {
-      var LA='ICP_LAST_ACTIVE';
-      var NOW=Date.now();
-      var t = Number(localStorage.getItem(LA) || 0);
-      var TIMEOUT=${timeoutMs};
-      if (!t || NOW - t > TIMEOUT) {
-        localStorage.removeItem('ICP_STATE');
-        localStorage.removeItem('interior-estimator-storage');
-        localStorage.removeItem(LA);
-      }
-    } catch(e) {}
-  })();
-`}
-        </Script>
-
-        <SessionGuard estimatorRoot="/estimator">
-          <Suspense fallback={null}>
-            {/* global page heading (top of every page) */}
-            <header className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-6">
-              <div className="flex justify-center">
-                <div className="card-glass rounded-xl px-5 py-4 w-full sm:w-auto">
-                  <h1 className="heading-md text-center">
-                    Estimate Your Interior Design Costs
-                  </h1>
-                </div>
-              </div>
-            </header>
-
-            {/* main layout container */}
-            <div className="app-safe-area mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
-              <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px] xl:grid-cols-[minmax(0,1fr)_320px]">
-                <main className="min-w-0">{children}</main>
-
-                {/* Right rail hidden on small screens */}
-                <aside className="hidden lg:block">
-                  <div className="sticky top-4">
-                    <RightRail />
-                  </div>
-                </aside>
-              </div>
-            </div>
-
-            {/* global bottom disclaimer (faded but visible) */}
-            <footer className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-8">
-              <div className="card-glass rounded-xl px-6 py-5">
-                <h2 className="text-base font-semibold text-foreground/80">
-                  Disclaimer
-                </h2>
-                <p className="mt-2 text-sm leading-relaxed text-foreground/70">
-                  This calculator provides an approximate estimate based on
-                  general market trends and standard design assumptions. Actual
-                  project costs may differ due to variations in material
-                  selection, labor rates, design complexity, and other factors.
-                  These figures are indicative and not a final quotation.
-                </p>
-                <div className="mt-3">
-                  <Link
-                    href="/disclaimer"
-                    className="btn-enhanced-secondary px-3 py-2 rounded-lg text-sm inline-block"
-                    aria-label="Read full Disclaimer & Terms"
-                  >
-                    Full Disclaimer &amp; Terms
-                  </Link>
-                </div>
-              </div>
-            </footer>
-          </Suspense>
-
-          <Analytics />
-        </SessionGuard>
-      </body>
-    </html>
-  );
 }
