@@ -178,12 +178,17 @@
 /* ============ App UI Helpers ============ */
 .estimator-container {
   @apply min-h-screen;
+  /* Ensure full width on mobile */
+  width: 100%;
+  max-width: 100%;
 }
 
 /* Cards */
 .calculator-card {
   @apply bg-white/40 backdrop-blur-xl border border-white/30 shadow-2xl;
   @apply relative overflow-hidden rounded-xl;
+  /* Full width on mobile, max-width on larger screens */
+  width: 100%;
 }
 .calculator-card::before {
   content: "";
@@ -428,6 +433,88 @@ iframe {
   }
   .calculator-card {
     box-shadow: 0 10px 22px rgba(0, 0, 0, 0.09);
+  }
+}
+
+/* Mobile responsive improvements */
+@media (max-width: 768px) {
+  .section-header {
+    padding: 1.5rem 1rem;
+  }
+
+  .section-header h2 {
+    font-size: 1.75rem;
+  }
+
+  .section-content {
+    padding: 1.5rem 1rem;
+  }
+
+  .elegant-card {
+    padding: 1rem !important;
+  }
+
+  .calculator-card {
+    margin: 0.5rem;
+  }
+
+  /* Make buttons stack on very small screens */
+  .flex.items-center.justify-between.pt-6 {
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  .flex.items-center.justify-between.pt-6 > button,
+  .flex.items-center.justify-between.pt-4 > button {
+    min-width: 120px;
+  }
+}
+
+@media (max-width: 640px) {
+  /* Reduce heading sizes on mobile */
+  .heading-xl {
+    font-size: 2rem;
+  }
+
+  .heading-lg {
+    font-size: 1.75rem;
+  }
+
+  .heading-md {
+    font-size: 1.5rem;
+  }
+
+  /* Stack navigation buttons on small screens */
+  .flex.items-center.justify-between.pt-6,
+  .flex.items-center.justify-between.pt-4 {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .flex.items-center.justify-between.pt-6 > button,
+  .flex.items-center.justify-between.pt-4 > button {
+    width: 100%;
+  }
+
+  /* Hide empty spacer divs on mobile */
+  .flex.items-center.justify-between.pt-6 > div:empty,
+  .flex.items-center.justify-between.pt-4 > div:empty {
+    display: none;
+  }
+}
+
+/* Touch-friendly minimum sizes */
+@media (max-width: 768px) {
+  button,
+  .calculator-input,
+  .calculator-select {
+    min-height: 44px;
+    font-size: 16px; /* Prevents iOS zoom */
+  }
+
+  /* Ensure button text doesn't wrap awkwardly */
+  button {
+    white-space: nowrap;
   }
 }
 
