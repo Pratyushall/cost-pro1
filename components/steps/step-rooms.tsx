@@ -126,7 +126,7 @@ export function StepRooms() {
 
       const updatedItems = applyRoomPreset(bedroom.items, preset);
       updateBedroom(id, { items: updatedItems });
-      setSelectedPresets((prev) => ({ ...prev, [id]: preset })); // Track selected preset
+      setSelectedPresets((prev) => ({ ...prev, [id]: preset }));
       analytics.roomPresetClicked(bedroom.role, preset);
     },
     [rooms.bedrooms, updateBedroom]
@@ -149,7 +149,7 @@ export function StepRooms() {
           },
         },
       });
-      setSelectedTVPreset(preset); // Track selected preset
+      setSelectedTVPreset(preset);
       analytics.tvPanelPresetClicked(preset);
     },
     [rooms.living, setRooms]
@@ -324,18 +324,18 @@ export function StepRooms() {
 
   return (
     <div className="max-w-5xl mx-auto">
-      <div className="calculator-card rounded-xl overflow-hidden">
+      <div className="calculator-card mobile-card rounded-xl overflow-hidden">
         <div className="section-header">
-          <div className="flex items-start justify-between">
+          <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
             <div>
-              <CardTitle className="text-3xl font-bold text-primary-foreground mb-2">
+              <CardTitle className="text-2xl sm:text-3xl font-bold text-primary-foreground mb-2">
                 Rooms & Items
               </CardTitle>
-              <p className="text-primary-foreground/90 text-base leading-relaxed">
+              <p className="text-primary-foreground/90 text-sm sm:text-base leading-relaxed">
                 Configure each room and select the items you want to include
               </p>
               {rooms.prefilled && (
-                <p className="text-sm text-primary-foreground/80 mt-2">
+                <p className="text-xs sm:text-sm text-primary-foreground/80 mt-2">
                   We pre-filled common choices—you can change anything.
                 </p>
               )}
@@ -346,7 +346,7 @@ export function StepRooms() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="bg-primary-foreground/10 text-primary-foreground border-primary-foreground/20 hover:bg-primary-foreground/20"
+                  className="btn-mobile bg-primary-foreground/10 text-primary-foreground border-primary-foreground/20 hover:bg-primary-foreground/20 w-full sm:w-auto"
                 >
                   Bulk Actions
                   <ChevronDown className="ml-2 h-4 w-4" />
@@ -387,9 +387,9 @@ export function StepRooms() {
             {rooms.bedrooms.map((bedroom, index) => (
               <Card key={bedroom.id} className="elegant-card">
                 <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
                         <svg
                           className="w-5 h-5 text-secondary-foreground"
                           fill="none"
@@ -404,7 +404,7 @@ export function StepRooms() {
                           />
                         </svg>
                       </div>
-                      <CardTitle className="text-lg font-semibold">
+                      <CardTitle className="text-base sm:text-lg font-semibold truncate">
                         {bedroom.role} Bedroom
                       </CardTitle>
                       <Select
@@ -414,7 +414,7 @@ export function StepRooms() {
                           updateBedroom(bedroom.id, { role: value });
                         }}
                       >
-                        <SelectTrigger className="calculator-select w-32 h-9">
+                        <SelectTrigger className="calculator-select mobile-field w-28 sm:w-32 h-9">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent className="bg-popover border-border text-popover-foreground">
@@ -472,7 +472,7 @@ export function StepRooms() {
                           handleBedroomSizeChange(bedroom.id, value)
                         }
                       >
-                        <SelectTrigger className="calculator-select mt-2">
+                        <SelectTrigger className="calculator-select mobile-field mt-2">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent className="bg-popover border-border text-popover-foreground">
@@ -523,7 +523,7 @@ export function StepRooms() {
                               e.target.value
                             )
                           }
-                          className="calculator-input mt-2"
+                          className="calculator-input mobile-field mt-2"
                         />
                         {sizeWarnings[`bedroom-${bedroom.id}`] && (
                           <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
@@ -537,7 +537,7 @@ export function StepRooms() {
 
                   {/* Room Presets */}
                   <div className="flex flex-wrap gap-2 items-center">
-                    <Label className="text-sm text-muted-foreground">
+                    <Label className="text-xs sm:text-sm text-muted-foreground w-full sm:w-auto">
                       Quick presets:
                     </Label>
                     {(
@@ -569,7 +569,7 @@ export function StepRooms() {
                   </div>
 
                   {/* Items */}
-                  <div className="grid grid-cols-2 gap-3 pt-2">
+                  <div className="grid grid-cols-1 gap-3 pt-2">
                     {Object.entries(bedroom.items).map(([itemKey, item]) => {
                       if (!item) return null;
                       const itemLabels: Record<string, string> = {
@@ -651,7 +651,7 @@ export function StepRooms() {
                 addBedroom();
                 analytics.bedroomAdded("Other");
               }}
-              className="w-full border-dashed border-2 border-border hover:bg-muted/50 h-12"
+              className="btn-mobile w-full border-dashed border-2 border-border hover:bg-muted/50 h-12"
             >
               <Plus className="h-4 w-4 mr-2" />
               Add Bedroom
@@ -661,7 +661,7 @@ export function StepRooms() {
             <Card className="elegant-card">
               <CardHeader>
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-accent flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-lg bg-accent flex items-center justify-center flex-shrink-0">
                     <svg
                       className="w-5 h-5 text-accent-foreground"
                       fill="none"
@@ -676,7 +676,7 @@ export function StepRooms() {
                       />
                     </svg>
                   </div>
-                  <CardTitle className="text-lg font-semibold">
+                  <CardTitle className="text-base sm:text-lg font-semibold">
                     Living Room
                   </CardTitle>
                 </div>
@@ -692,7 +692,7 @@ export function StepRooms() {
                         analytics.roomSizeChanged("Living", value);
                       }}
                     >
-                      <SelectTrigger className="calculator-select mt-2">
+                      <SelectTrigger className="calculator-select mobile-field mt-2">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent className="bg-popover border-border text-popover-foreground">
@@ -744,7 +744,7 @@ export function StepRooms() {
                             },
                           })
                         }
-                        className="calculator-input mt-2"
+                        className="calculator-input mobile-field mt-2"
                       />
                     </div>
                   )}
@@ -753,7 +753,7 @@ export function StepRooms() {
                 <div className="space-y-3 pt-2">
                   {/* TV Drawer Unit */}
                   <div className="border border-border rounded-lg p-4 bg-muted/30">
-                    <div className="flex items-center justify-between gap-4">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                       <div
                         className="flex items-center space-x-3 flex-1 cursor-pointer"
                         onClick={() => {
@@ -815,7 +815,7 @@ export function StepRooms() {
 
                   {/* TV Panel */}
                   <div className="border border-border rounded-lg p-4 bg-muted/30 space-y-3">
-                    <div className="flex items-center justify-between gap-4">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                       <div
                         className="flex items-center space-x-3 flex-1 cursor-pointer"
                         onClick={() => {
@@ -878,7 +878,7 @@ export function StepRooms() {
                       <>
                         {/* TV Panel presets with selected state */}
                         <div className="flex flex-wrap gap-2 items-center">
-                          <Label className="text-sm text-muted-foreground">
+                          <Label className="text-xs sm:text-sm text-muted-foreground w-full sm:w-auto">
                             Quick presets:
                           </Label>
                           {(
@@ -922,7 +922,7 @@ export function StepRooms() {
                                 },
                               })
                             }
-                            className="calculator-input mt-1"
+                            className="calculator-input mobile-field mt-1"
                             placeholder="60"
                           />
                         </div>
@@ -937,7 +937,7 @@ export function StepRooms() {
             <Card className="elegant-card">
               <CardHeader>
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
                     <svg
                       className="w-5 h-5 text-secondary-foreground"
                       fill="none"
@@ -952,7 +952,7 @@ export function StepRooms() {
                       />
                     </svg>
                   </div>
-                  <CardTitle className="text-lg font-semibold">
+                  <CardTitle className="text-base sm:text-lg font-semibold">
                     Pooja Room
                   </CardTitle>
                 </div>
@@ -968,7 +968,7 @@ export function StepRooms() {
                         analytics.roomSizeChanged("Pooja", value);
                       }}
                     >
-                      <SelectTrigger className="calculator-select mt-2">
+                      <SelectTrigger className="calculator-select mobile-field mt-2">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent className="bg-popover border-border text-popover-foreground">
@@ -1008,7 +1008,7 @@ export function StepRooms() {
                             },
                           })
                         }
-                        className="calculator-input mt-2"
+                        className="calculator-input mobile-field mt-2"
                       />
                     </div>
                   )}
@@ -1016,7 +1016,7 @@ export function StepRooms() {
 
                 <div className="space-y-3 pt-2">
                   <div className="border border-border rounded-lg p-4 bg-muted/30 space-y-3">
-                    <div className="flex items-center justify-between gap-4">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                       <div
                         className="flex items-center space-x-3 flex-1 cursor-pointer"
                         onClick={() => {
@@ -1087,7 +1087,7 @@ export function StepRooms() {
                               },
                             })
                           }
-                          className="calculator-input mt-1"
+                          className="calculator-input mobile-field mt-1"
                           placeholder="0"
                           min={0}
                         />
@@ -1102,7 +1102,7 @@ export function StepRooms() {
             <Card className="elegant-card">
               <CardHeader>
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-accent flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-lg bg-accent flex items-center justify-center flex-shrink-0">
                     <svg
                       className="w-5 h-5 text-accent-foreground"
                       fill="none"
@@ -1117,7 +1117,7 @@ export function StepRooms() {
                       />
                     </svg>
                   </div>
-                  <CardTitle className="text-lg font-semibold">
+                  <CardTitle className="text-base sm:text-lg font-semibold">
                     Kitchen
                   </CardTitle>
                 </div>
@@ -1132,7 +1132,7 @@ export function StepRooms() {
                         handleKitchenTypeOrSizeChange(value, undefined)
                       }
                     >
-                      <SelectTrigger className="calculator-select mt-2">
+                      <SelectTrigger className="calculator-select mobile-field mt-2">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent className="bg-popover border-border text-popover-foreground">
@@ -1165,7 +1165,7 @@ export function StepRooms() {
                         handleKitchenTypeOrSizeChange(undefined, value)
                       }
                     >
-                      <SelectTrigger className="calculator-select mt-2">
+                      <SelectTrigger className="calculator-select mobile-field mt-2">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent className="bg-popover border-border text-popover-foreground">
@@ -1211,7 +1211,7 @@ export function StepRooms() {
                             },
                           })
                         }
-                        className="calculator-input mt-2"
+                        className="calculator-input mobile-field mt-2"
                       />
                     </div>
                   )}
@@ -1220,7 +1220,7 @@ export function StepRooms() {
                 <div className="space-y-3 pt-2">
                   {/* Base Unit */}
                   <div className="border border-border rounded-lg p-4 bg-muted/30">
-                    <div className="flex items-center justify-between gap-4">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                       <div
                         className="flex items-center space-x-3 flex-1 cursor-pointer"
                         onClick={() => {
@@ -1281,7 +1281,7 @@ export function StepRooms() {
                   </div>
 
                   {/* Quantity inputs */}
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 gap-4">
                     <div>
                       <Label className="field-label text-sm">
                         Tandem Baskets
@@ -1306,7 +1306,7 @@ export function StepRooms() {
                             qty
                           );
                         }}
-                        className="calculator-input mt-1"
+                        className="calculator-input mobile-field mt-1"
                         placeholder="0"
                         min={0}
                       />
@@ -1335,7 +1335,7 @@ export function StepRooms() {
                             qty
                           );
                         }}
-                        className="calculator-input mt-1"
+                        className="calculator-input mobile-field mt-1"
                         placeholder="0"
                         min={0}
                       />
@@ -1344,7 +1344,7 @@ export function StepRooms() {
 
                   {rooms.kitchen.tandemBaskets.qty > 0 && (
                     <div className="border border-border rounded-lg p-4 bg-muted/30">
-                      <div className="flex items-center justify-between gap-4">
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                         <Label className="field-label">
                           Tandem Baskets ({rooms.kitchen.tandemBaskets.qty})
                         </Label>
@@ -1384,7 +1384,7 @@ export function StepRooms() {
 
                   {rooms.kitchen.bottlePullout.qty > 0 && (
                     <div className="border border-border rounded-lg p-4 bg-muted/30">
-                      <div className="flex items-center justify-between gap-4">
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                         <Label className="field-label">
                           Bottle Pullout ({rooms.kitchen.bottlePullout.qty})
                         </Label>
@@ -1424,7 +1424,7 @@ export function StepRooms() {
 
                   {/* Corner & Wicker */}
                   <div className="border border-border rounded-lg p-4 bg-muted/30">
-                    <div className="flex items-center justify-between gap-4">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                       <div
                         className="flex items-center space-x-3 flex-1 cursor-pointer"
                         onClick={() => {
@@ -1484,7 +1484,7 @@ export function StepRooms() {
                   </div>
 
                   <div className="border border-border rounded-lg p-4 bg-muted/30">
-                    <div className="flex items-center justify-between gap-4">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                       <div
                         className="flex items-center space-x-3 flex-1 cursor-pointer"
                         onClick={() => {
@@ -1550,12 +1550,12 @@ export function StepRooms() {
             </Card>
 
             {/* Action Buttons */}
-            <div className="flex items-center justify-between pt-4 gap-4">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between pt-4 gap-3 sm:gap-4">
               {/* Left: Back button */}
               <Button
                 variant="outline"
                 onClick={handleBack}
-                className="bg-white/50 backdrop-blur-md border-white/40 text-foreground hover:bg-white/70 h-14 px-8 rounded-lg text-base font-semibold shadow-md"
+                className="btn-mobile bg-white/50 backdrop-blur-md border-white/40 text-foreground hover:bg-white/70 h-12 sm:h-14 px-6 sm:px-8 rounded-lg text-base font-semibold shadow-md order-2 sm:order-1"
               >
                 <ArrowLeft className="w-5 h-5 mr-2" />
                 Back
@@ -1565,7 +1565,7 @@ export function StepRooms() {
               <Button
                 variant="outline"
                 onClick={handleReset}
-                className="bg-white/50 backdrop-blur-md border-white/40 text-foreground hover:bg-white/70 h-14 px-8 rounded-lg text-base font-semibold shadow-md"
+                className="btn-mobile bg-white/50 backdrop-blur-md border-white/40 text-foreground hover:bg-white/70 h-12 sm:h-14 px-6 sm:px-8 rounded-lg text-base font-semibold shadow-md order-3 sm:order-2"
               >
                 <RotateCcw className="w-5 h-5 mr-2" />
                 Reset
@@ -1574,7 +1574,7 @@ export function StepRooms() {
               {/* Right: Next button */}
               <Button
                 onClick={handleNext}
-                className="btn-enhanced-primary px-10 h-12"
+                className="btn-enhanced-primary btn-mobile px-8 sm:px-10 h-12 order-1 sm:order-3"
               >
                 Next
                 <svg
