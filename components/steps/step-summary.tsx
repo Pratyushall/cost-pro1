@@ -314,7 +314,7 @@ export function StepSummary() {
                 variant="secondary"
                 className="bg-accent/20 backdrop-blur-md text-accent border border-accent/40 text-base px-4 py-2"
               >
-                erify to unlock full breakdown
+                Verify to unlock full breakdown
               </Badge>
             </div>
             <p className="text-base text-muted-foreground mt-2">
