@@ -5,10 +5,10 @@ import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 const steps = [
-  { number: 1, label: "Basics" },
-  { number: 2, label: "Single Line" },
-  { number: 3, label: "Rooms" },
-  { number: 4, label: "Add-ons" },
+  { number: 1, label: "1" },
+  { number: 2, label: "2" },
+  { number: 3, label: "3" },
+  { number: 4, label: "4" },
 ];
 
 export function StepNavigation() {
