@@ -67,7 +67,7 @@ export default function RootLayout({
               <div className="flex justify-center">
                 <div className="card-glass rounded-xl px-5 py-4 w-full sm:w-auto">
                   <h1 className="heading-md text-center">
-                    Estimate Your Interior Design Costs
+                    Interior Budget Calculator
                   </h1>
                 </div>
               </div>
