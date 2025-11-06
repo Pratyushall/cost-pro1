@@ -5,114 +5,142 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-// ----- ENV (must match Vercel exactly) -----
 const {
   AISENSY_API_URL = "",
   AISENSY_API_KEY = "",
   AISENSY_TEMPLATE_NAME = "",
   AISENSY_CAMPAIGN_NAME = "OTP",
   AISENSY_SOURCE = "website",
-  OTP_DIGITS = "6",
+  OTP_DIGITS = "6", // you kept 6; fine
   OTP_TTL_MINUTES = "5",
   OTP_RESEND_COOLDOWN_SECONDS = "45",
+  NEXT_PUBLIC_OTP_DUMMY = "false",
 } = process.env;
 
-// Simple in-memory store -> swap with Redis in prod
+// simple in-memory store (swap to Redis in prod)
 type Rec = { code: string; exp: number; nextSendAt: number };
-const mem = (global as any).__otpStore ?? new Map<string, Rec>();
+const mem: Map<string, Rec> = (global as any).__otpStore ?? new Map();
 (global as any).__otpStore = mem;
 
-function toE164India(raw: string) {
+const toE164India = (raw: string) => {
   const d = (raw || "").replace(/\D/g, "");
   if (!d) return "";
   if (d.length === 10) return `+91${d}`;
   if (d.startsWith("91") && d.length > 10) return `+${d}`;
   return d.startsWith("+") ? d : `+${d}`;
-}
+};
+const gen = (len: number) =>
+  crypto
+    .randomInt(0, 10 ** len)
+    .toString()
+    .padStart(len, "0");
 
-function generateOtp(len: number) {
-  const max = 10 ** len - 1;
-  const num = crypto.randomInt(0, max);
-  return num.toString().padStart(len, "0");
-}
-
-function json(res: any, status = 200) {
-  return NextResponse.json(res, { status });
-}
+const j = (res: any, status = 200) => NextResponse.json(res, { status });
 
 export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => ({}));
-    const phoneInput = String(body?.phone ?? "");
-    const destination = toE164India(phoneInput);
-
+    const phoneRaw = String(body?.phone ?? "");
+    const destination = toE164India(phoneRaw); // e.g. +91970xxxxxxx
     if (!/^\+\d{10,15}$/.test(destination)) {
-      return json({ ok: false, error: "bad_phone" }, 400);
+      return j({ ok: false, error: "bad_phone", detail: destination }, 400);
     }
 
-    // Env sanity
-    if (!AISENSY_API_URL || !AISENSY_API_KEY || !AISENSY_TEMPLATE_NAME) {
-      return json(
-        {
-          ok: false,
-          error: "misconfigured",
-          detail:
-            "Missing AISENSY_API_URL / AISENSY_API_KEY / AISENSY_TEMPLATE_NAME",
-        },
-        500
-      );
-    }
+    // env sanity
+    const miss: string[] = [];
+    if (!AISENSY_API_URL) miss.push("AISENSY_API_URL");
+    if (!AISENSY_API_KEY) miss.push("AISENSY_API_KEY");
+    if (!AISENSY_TEMPLATE_NAME) miss.push("AISENSY_TEMPLATE_NAME");
+    if (miss.length)
+      return j({ ok: false, error: "misconfigured", missing: miss }, 500);
 
+    // cooldown
     const now = Date.now();
-    const prev: Rec | undefined = mem.get(destination);
     const cooldownMs = parseInt(OTP_RESEND_COOLDOWN_SECONDS, 10) * 1000;
-    if (prev && prev.nextSendAt && now < prev.nextSendAt) {
-      return json({ ok: false, error: "resend_too_soon" }, 429);
+    const prev = mem.get(destination);
+    if (prev && now < prev.nextSendAt)
+      return j({ ok: false, error: "resend_too_soon" }, 429);
+
+    const len = parseInt(OTP_DIGITS, 10);
+    const ttlMin = parseInt(OTP_TTL_MINUTES, 10);
+    const code = gen(len);
+
+    // dev bypass
+    if (NEXT_PUBLIC_OTP_DUMMY === "true") {
+      mem.set(destination, {
+        code,
+        exp: now + ttlMin * 60_000,
+        nextSendAt: now + cooldownMs,
+      });
+      return j({ ok: true, dev: true, code, expiresInSec: ttlMin * 60 });
     }
 
-    const digits = parseInt(OTP_DIGITS, 10);
-    const ttlMin = parseInt(OTP_TTL_MINUTES, 10);
-    const code = generateOtp(digits);
-
-    // Persist (replace with Redis in prod)
+    // store first (we'll rollback on failure)
     mem.set(destination, {
       code,
       exp: now + ttlMin * 60_000,
       nextSendAt: now + cooldownMs,
     });
 
-    // AiSensy Campaign v2 payload
-    const payload = {
+    // --- payload builder (Campaign v2) ---
+    const makePayload = (dest: string) => ({
       apiKey: AISENSY_API_KEY,
       campaignName: AISENSY_CAMPAIGN_NAME,
-      destination, // E.164 with +
+      destination: dest, // primary try
       userName: "Guest",
       source: AISENSY_SOURCE,
-      templateParams: [code], // Your template has {{1}} = OTP
+      templateParams: [code], // {{1}} -> OTP
       tags: ["otp"],
-      attributes: {
-        ttl_minutes: String(ttlMin), // optional, just for your records
-      },
-      // If AiSensy needs the exact template: add it as `templateName`
-      templateName: AISENSY_TEMPLATE_NAME,
-    };
-
-    const r = await fetch(AISENSY_API_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+      attributes: { ttl_minutes: String(ttlMin) },
+      templateName: AISENSY_TEMPLATE_NAME, // keep explicit
     });
 
-    const txt = await r.text();
-    if (!r.ok) {
-      // rollback to allow retry immediately if delivery failed
-      mem.delete(destination);
-      return json({ ok: false, error: "aisensy_failed", detail: txt }, 502);
+    // try with +E.164 first
+    let r = await fetch(AISENSY_API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(makePayload(destination)),
+    });
+    let txt = await r.text();
+    let parsed: any = null;
+    try {
+      parsed = JSON.parse(txt);
+    } catch {}
+
+    // if number-format error, retry with digits-only (91XXXXXXXXXX)
+    const looksLikeNumberError =
+      !r.ok && /invalid|phone|destination|number/i.test(txt);
+
+    if (!r.ok && looksLikeNumberError) {
+      const digitsOnly = destination.replace(/^\+/, "");
+      r = await fetch(AISENSY_API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(makePayload(digitsOnly)),
+      });
+      txt = await r.text();
+      parsed = null;
+      try {
+        parsed = JSON.parse(txt);
+      } catch {}
     }
 
-    return json({ ok: true, expiresInSec: ttlMin * 60 });
+    if (!r.ok) {
+      mem.delete(destination); // allow immediate retry
+      return j(
+        {
+          ok: false,
+          error: "aisensy_failed",
+          status: r.status,
+          detail: parsed || txt,
+        },
+        502
+      );
+    }
+
+    return j({ ok: true, expiresInSec: ttlMin * 60, provider: parsed || txt });
   } catch (e: any) {
-    return json(
+    return j(
       { ok: false, error: "server_error", detail: String(e?.message || e) },
       500
     );
