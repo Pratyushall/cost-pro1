@@ -1,6 +1,19 @@
-// app/api/otp/verify/route.ts
 import { NextResponse } from "next/server";
-import { normalizePhone, verifyOtp } from "@/lib/otp-store";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
+type Rec = { code: string; exp: number; nextSendAt: number };
+const mem: Map<string, Rec> = (global as any).__otpStore ?? new Map();
+
+function toE164India(raw: string) {
+  const d = (raw || "").replace(/\D/g, "");
+  if (!d) return "";
+  if (d.length === 10) return `+91${d}`;
+  if (d.startsWith("91") && d.length > 10) return `+${d}`;
+  return d.startsWith("+") ? d : `+${d}`;
+}
 
 export async function POST(req: Request) {
   try {
@@ -12,19 +25,31 @@ export async function POST(req: Request) {
         { status: 400 }
       );
 
-    phone = normalizePhone(phone);
-    const result = verifyOtp(phone, String(code));
-
-    if (!result.ok) {
+    const key = toE164India(String(phone));
+    const rec = mem.get(key);
+    if (!rec)
       return NextResponse.json(
-        { ok: false, reason: result.reason },
+        { ok: false, reason: "not_found" },
         { status: 400 }
       );
-    }
+    if (Date.now() > rec.exp)
+      return NextResponse.json(
+        { ok: false, reason: "expired" },
+        { status: 400 }
+      );
+
+    if (String(code) !== rec.code)
+      return NextResponse.json(
+        { ok: false, reason: "mismatch" },
+        { status: 400 }
+      );
+
+    // success → consume
+    mem.delete(key);
     return NextResponse.json({ ok: true });
-  } catch (err: any) {
+  } catch (e: any) {
     return NextResponse.json(
-      { error: err?.message || "server_error" },
+      { error: e?.message || "server_error" },
       { status: 500 }
     );
   }
