@@ -1,155 +1,99 @@
-"use client";
+// lib/otp.ts
+import crypto from "crypto";
 
-import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+// Support both minutes and seconds envs; prefer minutes if set.
+const TTL_MIN = process.env.OTP_TTL_MINUTES
+  ? parseInt(process.env.OTP_TTL_MINUTES, 10)
+  : null;
+const TTL_SEC_ENV = process.env.OTP_TTL_SEC
+  ? parseInt(process.env.OTP_TTL_SEC, 10)
+  : null;
 
-type Channel = "email" | "sms";
+const OTP_TTL_SEC = TTL_MIN != null ? TTL_MIN * 60 : TTL_SEC_ENV ?? 300;
+const OTP_ATTEMPT_LIMIT = parseInt(process.env.OTP_ATTEMPT_LIMIT || "5", 10);
 
-function isSessionValid(s?: string | null) {
-  if (!s) return false;
-  try {
-    const [b, sig] = s.split(".");
-    if (!b || !sig) return false;
-    const data = JSON.parse(atob(b.replace(/-/g, "+").replace(/_/g, "/")));
-    return data?.exp && data.exp > Math.floor(Date.now() / 1000);
-  } catch {
-    return false;
+// In-memory fallback for dev
+type RecordValue = { hash: string; attempts: number; expiresAt: number };
+const mem = new Map<string, RecordValue>();
+
+// KV (optional)
+const kvConfigured =
+  !!process.env.UPSTASH_REDIS_REST_URL &&
+  !!process.env.UPSTASH_REDIS_REST_TOKEN;
+
+let kv: any = null;
+if (kvConfigured) {
+  // lazy import so local dev works without the package/envs
+  kv = require("@vercel/kv").kv;
+}
+
+const sha256 = (s: string) =>
+  crypto.createHash("sha256").update(s).digest("hex");
+const nowSec = () => Math.floor(Date.now() / 1000);
+
+// Use E.164 (including "+") as the identity; we hash it for the key.
+const key = (identityE164: string) => `otp:${sha256(identityE164)}`;
+
+export function genOtp(len = 6) {
+  // cryptographically strong (vs Math.random)
+  const max = 10 ** len;
+  return crypto.randomInt(0, max).toString().padStart(len, "0");
+}
+
+export async function storeOtp(identityE164: string, otp: string) {
+  const k = key(identityE164);
+  const value: RecordValue = {
+    hash: sha256(otp),
+    attempts: 0,
+    expiresAt: nowSec() + OTP_TTL_SEC,
+  };
+  if (kvConfigured) {
+    await kv.set(k, value, { ex: OTP_TTL_SEC });
+  } else {
+    mem.set(k, value);
+    setTimeout(() => mem.delete(k), OTP_TTL_SEC * 1000);
   }
 }
 
-export function OtpGate({
-  onVerified,
-}: {
-  onVerified: (session: string) => void;
-}) {
-  const [channel, setChannel] = useState<Channel>("email");
-  const [to, setTo] = useState("");
-  const [token, setToken] = useState<string | null>(null);
-  const [code, setCode] = useState("");
-  const [step, setStep] = useState<"enter" | "code" | "done">("enter");
-  const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
+export async function verifyOtp(identityE164: string, otp: string) {
+  const k = key(identityE164);
 
-  useEffect(() => {
-    const s = localStorage.getItem("otpSession");
-    if (isSessionValid(s)) {
-      onVerified(s!);
-      setStep("done");
-    }
-  }, [onVerified]);
+  const get = async (): Promise<RecordValue | null> =>
+    kvConfigured
+      ? ((await kv.get(k)) as RecordValue | null)
+      : mem.get(k) ?? null;
 
-  async function requestOtp() {
-    setLoading(true);
-    setErr(null);
-    try {
-      const res = await fetch("/api/otp/request", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ channel, to }),
-      });
-      const j = await res.json();
-      if (!j.ok) throw new Error(j.error || "Failed to send OTP");
-      setToken(j.token);
-      setStep("code");
-    } catch (e: any) {
-      setErr(e.message || "Failed to send OTP");
-    } finally {
-      setLoading(false);
-    }
+  const set = async (v: RecordValue) =>
+    kvConfigured
+      ? kv.set(k, v, { ex: Math.max(v.expiresAt - nowSec(), 1) })
+      : mem.set(k, v);
+
+  const del = async () => (kvConfigured ? kv.del(k) : mem.delete(k));
+
+  let rec = await get();
+  if (!rec) return { ok: false as const, reason: "expired" as const };
+
+  if (rec.expiresAt < nowSec()) {
+    await del();
+    return { ok: false as const, reason: "expired" as const };
   }
 
-  async function verifyOtp() {
-    if (!token) return;
-    setLoading(true);
-    setErr(null);
-    try {
-      const res = await fetch("/api/otp/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, to, code }),
-      });
-      const j = await res.json();
-      if (!j.ok) throw new Error(j.error || "Incorrect code");
-      localStorage.setItem("otpSession", j.session);
-      setStep("done");
-      onVerified(j.session);
-    } catch (e: any) {
-      setErr(e.message || "Verification failed");
-    } finally {
-      setLoading(false);
-    }
+  if (rec.attempts >= OTP_ATTEMPT_LIMIT) {
+    await del();
+    return { ok: false as const, reason: "locked" as const };
   }
 
-  if (step === "done") return null;
+  const ok = rec.hash === sha256(otp);
+  if (ok) {
+    await del();
+    return { ok: true as const };
+  }
 
-  return (
-    <Card className="border border-yellow-300 bg-yellow-50">
-      <CardHeader>
-        <CardTitle className="text-black">
-          Verify to view your estimate
-        </CardTitle>
-        <p className="text-sm text-gray-700">
-          We’ll send a one-time code to verify it’s you.
-        </p>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <div className="flex gap-2">
-          <button
-            className={`px-2 py-1 rounded border ${
-              channel === "email"
-                ? "bg-yellow-400 text-black border-yellow-400"
-                : "border-yellow-400 text-yellow-700"
-            }`}
-            onClick={() => setChannel("email")}
-            type="button"
-          >
-            Email
-          </button>
-          <button
-            className={`px-2 py-1 rounded border ${
-              channel === "sms"
-                ? "bg-yellow-400 text-black border-yellow-400"
-                : "border-yellow-400 text-yellow-700"
-            }`}
-            onClick={() => setChannel("sms")}
-            type="button"
-          >
-            SMS
-          </button>
-        </div>
-
-        {step === "enter" && (
-          <div className="flex gap-2">
-            <Input
-              placeholder={
-                channel === "email" ? "you@example.com" : "+91XXXXXXXXXX"
-              }
-              value={to}
-              onChange={(e) => setTo(e.target.value)}
-            />
-            <Button onClick={requestOtp} disabled={loading || !to}>
-              {loading ? "Sending..." : "Send OTP"}
-            </Button>
-          </div>
-        )}
-
-        {step === "code" && (
-          <div className="flex gap-2">
-            <Input
-              placeholder="Enter 6-digit code"
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-            />
-            <Button onClick={verifyOtp} disabled={loading || code.length !== 6}>
-              {loading ? "Verifying..." : "Verify"}
-            </Button>
-          </div>
-        )}
-
-        {err && <p className="text-red-600 text-sm">{err}</p>}
-      </CardContent>
-    </Card>
-  );
+  rec.attempts += 1;
+  await set(rec);
+  return {
+    ok: false as const,
+    reason: "invalid" as const,
+    remaining: Math.max(OTP_ATTEMPT_LIMIT - rec.attempts, 0),
+  };
 }

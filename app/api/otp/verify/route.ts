@@ -1,51 +1,61 @@
 import { NextResponse } from "next/server";
+import { verifyOtp } from "@/lib/otp";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-type Rec = { code: string; exp: number; nextSendAt: number };
-const mem: Map<string, Rec> = (global as any).__otpStore ?? new Map();
-
-function toE164India(raw: string) {
+const toE164India = (raw: string) => {
   const d = (raw || "").replace(/\D/g, "");
   if (!d) return "";
   if (d.length === 10) return `+91${d}`;
   if (d.startsWith("91") && d.length > 10) return `+${d}`;
   return d.startsWith("+") ? d : `+${d}`;
-}
+};
 
 export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => ({}));
     let { phone, code } = body || {};
-    if (!phone || !code)
+    if (!phone || !code) {
       return NextResponse.json(
         { error: "phone_and_code_required" },
         { status: 400 }
       );
+    }
 
     const key = toE164India(String(phone));
-    const rec = mem.get(key);
-    if (!rec)
+    if (!/^\+\d{10,15}$/.test(key)) {
       return NextResponse.json(
-        { ok: false, reason: "not_found" },
+        { ok: false, reason: "bad_phone" },
         { status: 400 }
       );
-    if (Date.now() > rec.exp)
-      return NextResponse.json(
-        { ok: false, reason: "expired" },
-        { status: 400 }
-      );
+    }
 
-    if (String(code) !== rec.code)
+    const res = await verifyOtp(key, String(code));
+
+    if (!res.ok) {
+      // Map reasons to consistent client messages/status
+      if (res.reason === "expired") {
+        return NextResponse.json(
+          { ok: false, reason: "expired" },
+          { status: 400 }
+        );
+      }
+      if (res.reason === "locked") {
+        return NextResponse.json(
+          { ok: false, reason: "locked" },
+          { status: 429 }
+        );
+      }
+      // "invalid" (with remaining attempts)
       return NextResponse.json(
-        { ok: false, reason: "mismatch" },
+        { ok: false, reason: "mismatch", remaining: (res as any).remaining },
         { status: 400 }
       );
+    }
 
-    // success → consume
-    mem.delete(key);
+    // If you issue a real session/JWT, return it here
     return NextResponse.json({ ok: true });
   } catch (e: any) {
     return NextResponse.json(
