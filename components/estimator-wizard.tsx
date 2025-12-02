@@ -22,9 +22,9 @@ export function EstimatorWizard() {
   const CurrentStepComponent = STEPS[currentStep - 1].component;
 
   return (
-    <div className="space-y-8 p-6 min-h-screen">
-      {/* Progress indicator with glassmorphism */}
-      <div className="flex items-center justify-center gap-3">
+    <div className="space-y-8 px-3 sm:px-6 py-6 min-h-screen">
+      {/* Progress indicator – desktop only */}
+      <div className="hidden md:flex items-center justify-center gap-3">
         {STEPS.map((step, index) => (
           <div key={step.id} className="flex items-center">
             <Badge
@@ -53,8 +53,8 @@ export function EstimatorWizard() {
         ))}
       </div>
 
-      {/* Current step */}
-      <div className="max-w-4xl mx-auto">
+      {/* Current step – full width on mobile, centered on larger screens */}
+      <div className="mx-auto w-full max-w-4xl">
         <CurrentStepComponent />
       </div>
     </div>
