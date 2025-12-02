@@ -27,13 +27,13 @@ export function StepNavigation() {
   };
 
   return (
-    <div className="space-y-4 sm:space-y-6">
+    <div className="hidden sm:block space-y-4 sm:space-y-6">
       {/* Current step label */}
       <p className="text-center text-sm font-medium text-foreground">
         Step {currentStep}: {steps[currentStep - 1]?.label}
       </p>
 
-      <div className="hidden sm:flex items-center justify-between">
+      <div className="flex items-center justify-between">
         {steps.map((step, index) => (
           <div key={step.number} className="flex items-center flex-1">
             <button
@@ -74,7 +74,7 @@ export function StepNavigation() {
         ))}
       </div>
 
-      <div className="hidden sm:flex items-center justify-between gap-3 pt-2 sm:pt-4">
+      <div className="flex items-center justify-between gap-3 pt-2 sm:pt-4">
         <Button
           variant="outline"
           onClick={handlePrevious}
