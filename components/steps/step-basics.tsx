@@ -27,7 +27,7 @@ import { RotateCcw } from "lucide-react";
 
 const STORAGE_KEY = "estimator_basics_v1";
 
-export function StepBasicsMobile() {
+export function StepBasics() {
   const { basics, setBasics, setCurrentStep } = useEstimatorStore();
   const [areaInput, setAreaInput] = useState("");
   const [approximateRange, setApproximateRange] = useState("");
@@ -246,37 +246,24 @@ export function StepBasicsMobile() {
   };
 
   return (
-    <div className="mx-auto max-w-md px-4 pb-24 pt-4 md:hidden">
-      <div className="calculator-card rounded-2xl overflow-hidden shadow-lg">
-        {/* Header Section */}
-        <div className="section-header px-4 py-5 sm:px-5">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-2xl font-bold text-primary-foreground">
-              Let&apos;s Begin!
-            </h2>
-            <button
-              type="button"
-              onClick={handleReset}
-              className="inline-flex items-center justify-center rounded-full p-2 text-primary-foreground/80 hover:bg-primary-foreground/10 active:bg-primary-foreground/20 transition-colors"
-              aria-label="Reset estimator"
-            >
-              <RotateCcw className="h-4 w-4" />
-            </button>
-          </div>
-          <p className="text-primary-foreground/90 text-sm leading-relaxed">
+    <div className="max-w-4xl mx-auto">
+      <div className="calculator-card rounded-xl overflow-hidden">
+        {/* Header Section with Primary Color */}
+        <div className="section-header">
+          <h2 className="text-4xl font-bold text-primary-foreground mb-3">
+            Let&apos;s Begin!
+          </h2>
+          <p className="text-primary-foreground/90 text-lg leading-relaxed">
             Choose a couple of basics and we&apos;ll take care of the math.
           </p>
         </div>
 
         {/* Content Section */}
-        <div className="section-content px-4 py-5 space-y-6">
+        <div className="section-content">
           {/* Carpet Area Section */}
-          <div className="elegant-card rounded-xl p-4 space-y-4">
+          <div className="elegant-card p-8 space-y-5">
             <div className="flex items-center justify-between">
-              <Label
-                htmlFor="carpet-area"
-                className="field-label text-base font-semibold"
-              >
+              <Label htmlFor="carpet-area" className="field-label text-xl">
                 Carpet Area
               </Label>
             </div>
@@ -289,32 +276,32 @@ export function StepBasicsMobile() {
               value={areaInput}
               onChange={(e) => handleAreaInputChange(e.target.value)}
               onKeyDown={handleKeyDown}
-              className="calculator-input h-11 text-base rounded-lg"
+              className="calculator-input h-14 text-lg rounded-lg"
             />
 
-            <p className="field-hint text-xs text-muted-foreground">
+            <p className="field-hint text-base">
               Not sure now? Pick an approximate below or we&apos;ll guess—you
               can edit later.
             </p>
 
             {/* Approximate Range Selector */}
-            <div className="pt-1 space-y-2">
-              <Label className="field-label text-xs font-medium">
+            <div className="pt-2 space-y-4">
+              <Label className="field-label text-base">
                 Or choose approximate range:
               </Label>
               <Select
                 value={approximateRange}
                 onValueChange={handleApproximateChange}
               >
-                <SelectTrigger className="calculator-select h-11 rounded-lg text-sm">
+                <SelectTrigger className="calculator-select h-14 rounded-lg text-lg">
                   <SelectValue placeholder="Select approximate range" />
                 </SelectTrigger>
-                <SelectContent className="bg-popover border-border max-h-[260px] text-popover-foreground text-sm">
+                <SelectContent className="bg-popover border-border max-h-[300px] text-popover-foreground">
                   {APPROXIMATE_RANGES.map((range) => (
                     <SelectItem
                       key={range.value}
                       value={range.value}
-                      className="py-3 text-sm focus:bg-accent/10 focus:text-foreground text-popover-foreground"
+                      className="py-4 text-lg focus:bg-accent/10 focus:text-foreground text-popover-foreground"
                     >
                       {range.label}
                     </SelectItem>
@@ -326,7 +313,7 @@ export function StepBasicsMobile() {
             {/* Estimate Message */}
             {showEstimateHint && estimateMessage && (
               <div
-                className="bg-accent/10 border border-accent/30 text-accent px-3 py-3 rounded-lg text-xs font-medium backdrop-blur-sm"
+                className="bg-accent/10 border border-accent/30 text-accent px-5 py-4 rounded-lg text-base font-medium backdrop-blur-sm"
                 role="status"
                 aria-live="polite"
               >
@@ -337,14 +324,14 @@ export function StepBasicsMobile() {
 
           <div className="divider" />
 
-          {/* BHK & Package stacked for mobile */}
-          <div className="space-y-4">
+          {/* BHK and Package Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* BHK Configuration */}
-            <div className="elegant-card rounded-xl p-4 space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-secondary/90 backdrop-blur-sm flex items-center justify-center shadow-md">
+            <div className="elegant-card p-8 space-y-5">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-lg bg-secondary/90 backdrop-blur-sm flex items-center justify-center shadow-lg">
                   <svg
-                    className="w-5 h-5 text-secondary-foreground"
+                    className="w-6 h-6 text-secondary-foreground"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -357,21 +344,19 @@ export function StepBasicsMobile() {
                     />
                   </svg>
                 </div>
-                <Label className="field-label text-sm font-semibold">
-                  BHK Configuration
-                </Label>
+                <Label className="field-label text-lg">BHK Configuration</Label>
               </div>
 
               <Select value={basics.bhk} onValueChange={handleBhkChange}>
-                <SelectTrigger className="calculator-select h-11 rounded-lg text-sm">
+                <SelectTrigger className="calculator-select h-14 rounded-lg text-lg">
                   <SelectValue placeholder="Select BHK" />
                 </SelectTrigger>
-                <SelectContent className="bg-popover border-border text-popover-foreground text-sm max-h-[260px]">
+                <SelectContent className="bg-popover border-border text-popover-foreground">
                   {BHK_OPTIONS.map((option) => (
                     <SelectItem
                       key={option.value}
                       value={option.value}
-                      className="py-3 text-sm focus:bg-secondary/10 focus:text-foreground text-popover-foreground"
+                      className="py-4 text-lg focus:bg-secondary/10 focus:text-foreground text-popover-foreground"
                     >
                       {option.label}
                     </SelectItem>
@@ -381,11 +366,11 @@ export function StepBasicsMobile() {
             </div>
 
             {/* Package Type */}
-            <div className="elegant-card rounded-xl p-4 space-y-3">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-accent/90 backdrop-blur-sm flex items-center justify-center shadow-md">
+            <div className="elegant-card p-8 space-y-5">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-lg bg-accent/90 backdrop-blur-sm flex items-center justify-center shadow-lg">
                   <svg
-                    className="w-5 h-5 text-accent-foreground"
+                    className="w-6 h-6 text-accent-foreground"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -398,73 +383,64 @@ export function StepBasicsMobile() {
                     />
                   </svg>
                 </div>
-                <Label className="field-label text-sm font-semibold">
-                  Package Type
-                </Label>
+                <Label className="field-label text-lg">Package Type</Label>
               </div>
 
               <Select value={basics.pkg} onValueChange={handlePackageChange}>
-                <SelectTrigger className="calculator-select h-11 rounded-lg text-sm">
+                <SelectTrigger className="calculator-select h-14 rounded-lg text-lg">
                   <SelectValue placeholder="Select package" />
                 </SelectTrigger>
-                <SelectContent className="bg-popover border-border text-popover-foreground text-sm">
+                <SelectContent className="bg-popover border-border text-popover-foreground">
                   <SelectItem
                     value="Premium"
-                    className="py-3 text-sm focus:bg-accent/10 focus:text-foreground text-popover-foreground"
+                    className="py-4 text-lg focus:bg-accent/10 focus:text-foreground text-popover-foreground"
                   >
                     Premium
                   </SelectItem>
                   <SelectItem
                     value="Luxury"
-                    className="py-3 text-sm focus:bg-accent/10 focus:text-foreground text-popover-foreground"
+                    className="py-4 text-lg focus:bg-accent/10 focus:text-foreground text-popover-foreground"
                   >
                     Luxury
                   </SelectItem>
                 </SelectContent>
               </Select>
 
-              <p className="field-hint text-xs text-muted-foreground">
+              <p className="field-hint text-base">
                 {basics.pkg === "Premium"
-                  ? "Good quality materials and finishes."
+                  ? "Good quality materials and finishes"
                   : basics.pkg === "Luxury"
-                  ? "High-end materials and premium finishes."
-                  : "Choose your preferred package level."}
+                  ? "High-end materials and premium finishes"
+                  : "Choose your preferred package level"}
               </p>
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* Bottom sticky footer action for mobile */}
-      <div className="fixed inset-x-0 bottom-0 z-20 bg-background/95 backdrop-blur border-t border-border px-4 py-3 md:hidden">
-        <div className="flex items-center justify-between gap-3">
-          <Button
-            variant="ghost"
-            type="button"
-            onClick={handleReset}
-            className="flex-1 h-10 text-xs font-medium text-muted-foreground border border-border rounded-lg"
-          >
-            Reset
-          </Button>
-          <Button
-            onClick={handleNext}
-            className="flex-[2] btn-enhanced-primary h-11 rounded-lg text-sm font-semibold"
-          >
-            Continue
-            <svg
-              className="w-4 h-4 ml-2"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+          <div className="flex items-center justify-between pt-6 gap-4">
+            {/* Left: Back button - hidden on step 1 */}
+            <div className="w-32"></div>
+
+            {/* Right: Next button */}
+            <Button
+              onClick={handleNext}
+              className="btn-enhanced-primary px-12 h-14 rounded-lg text-lg font-semibold"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M13 7l5 5m0 0l-5 5m5-5H6"
-              />
-            </svg>
-          </Button>
+              Continue
+              <svg
+                className="w-6 h-6 ml-2"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M13 7l5 5m0 0l-5 5m5-5H6"
+                />
+              </svg>
+            </Button>
+          </div>
         </div>
       </div>
     </div>
