@@ -15,7 +15,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Badge } from "@/components/ui/badge";
 import { PackagePicker } from "@/components/package-picker";
 import { X, ArrowLeft, RotateCcw } from "lucide-react";
 import { resetStore } from "@/store/reset";
@@ -29,7 +28,7 @@ const ADDON_KEYS = [
 ] as const;
 type AddonKeyLocal = (typeof ADDON_KEYS)[number];
 
-export function StepAddons() {
+export function StepAddonsMobile() {
   const { addons, basics, rooms, setAddons, setCurrentStep } =
     useEstimatorStore();
   const [startTime] = useState(Date.now());
@@ -110,7 +109,7 @@ export function StepAddons() {
           enabled: qty > 0,
         },
       });
-      setSelectedPresets((prev) => ({ ...prev, [key]: preset.label })); // Track selected preset
+      setSelectedPresets((prev) => ({ ...prev, [key]: preset.label }));
       analytics.addonPresetClicked(key, preset.label);
     },
     [addons, rooms, setAddons]
@@ -128,7 +127,7 @@ export function StepAddons() {
         };
       });
       setAddons(updates);
-      setSelectedBundle(bundle.label); // Track selected bundle
+      setSelectedBundle(bundle.label);
       analytics.bundleClicked(bundle.label);
     },
     [addons, setAddons]
@@ -181,23 +180,23 @@ export function StepAddons() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="calculator-card rounded-xl overflow-hidden">
-        {/* Header Section with Primary Color */}
-        <div className="section-header">
-          <h2 className="text-3xl font-bold text-primary-foreground mb-2">
-            Add-ons & Furnishings
+    <div className="mx-auto max-w-md px-4 pt-4 pb-24 md:hidden">
+      <div className="calculator-card rounded-2xl overflow-hidden shadow-lg">
+        {/* Header Section */}
+        <div className="section-header px-4 py-4">
+          <h2 className="text-2xl font-bold text-primary-foreground mb-1">
+            Add-ons &amp; Furnishings
           </h2>
-          <p className="text-primary-foreground/90 text-base leading-relaxed">
+          <p className="text-primary-foreground/90 text-sm leading-relaxed">
             Optional extras to complete your space. Skip if not needed—you can
             add later.
           </p>
         </div>
 
         {/* Content Section */}
-        <div className="section-content space-y-6">
-          {/* Bundle buttons with selected state */}
-          <div className="flex flex-wrap gap-3">
+        <div className="section-content px-4 pb-4 pt-1 space-y-5">
+          {/* Bundle buttons */}
+          <div className="flex flex-wrap gap-2">
             {ADDON_BUNDLES.map((bundle) => (
               <Button
                 key={bundle.label}
@@ -206,7 +205,7 @@ export function StepAddons() {
                 }
                 size="sm"
                 onClick={() => handleBundleClick(bundle)}
-                className={`h-10 px-4 rounded-lg border-2 font-medium transition-all ${
+                className={`h-9 px-3 rounded-lg border text-xs font-medium transition-all ${
                   selectedBundle === bundle.label
                     ? "bg-secondary text-secondary-foreground border-secondary"
                     : "border-secondary/30 bg-white hover:bg-secondary/10 hover:border-secondary text-foreground"
@@ -227,7 +226,10 @@ export function StepAddons() {
                 addon.pkgOverride && addon.pkgOverride !== basics.pkg;
 
               return (
-                <div key={key} className="elegant-card p-5 space-y-4">
+                <div
+                  key={key}
+                  className="elegant-card rounded-xl p-4 space-y-3"
+                >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <Switch
@@ -235,7 +237,7 @@ export function StepAddons() {
                         onCheckedChange={(c) => handleToggle(key, c)}
                       />
                       <div>
-                        <Label className="text-base font-semibold text-foreground">
+                        <Label className="text-sm font-semibold text-foreground">
                           {ADDON_LABELS[key]}
                         </Label>
                       </div>
@@ -244,39 +246,39 @@ export function StepAddons() {
 
                   {/* Controls - only show when enabled */}
                   {addon.enabled && (
-                    <div className="space-y-4 pl-11">
+                    <div className="space-y-3 pl-9">
                       {/* Qty input with unit label */}
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2">
                         <Input
                           type="number"
                           min={0}
                           max={20}
                           value={addon.qty}
                           onChange={(e) => handleQtyChange(key, e.target.value)}
-                          className="calculator-input w-24 h-11 rounded-lg"
+                          className="calculator-input w-20 h-9 rounded-lg text-sm"
                           autoFocus
                           onKeyDown={(e) => {
                             if (e.key === "Enter") {
                               e.preventDefault();
                               const pkgPicker = e.currentTarget
-                                .closest(".space-y-4")
+                                .closest(".space-y-3")
                                 ?.querySelector<HTMLButtonElement>("button");
                               pkgPicker?.focus();
                             }
                           }}
                         />
-                        <span className="text-sm text-muted-foreground font-medium">
+                        <span className="text-xs text-muted-foreground font-medium">
                           {ADDON_UNITS[key]}
                         </span>
                         {addon.qty > 15 && (
-                          <span className="text-xs text-amber-600 font-medium">
+                          <span className="text-[11px] text-amber-600 font-medium">
                             That&apos;s quite a lot! Consider if you need this
                             many.
                           </span>
                         )}
                       </div>
 
-                      {/* Presets with selected state */}
+                      {/* Presets */}
                       <div className="flex flex-wrap gap-2">
                         {ADDON_PRESETS[key].map((preset) => (
                           <Button
@@ -288,7 +290,7 @@ export function StepAddons() {
                             }
                             size="sm"
                             onClick={() => handlePresetClick(key, preset)}
-                            className={`h-9 px-3 rounded-lg text-sm font-medium transition-colors ${
+                            className={`h-8 px-3 rounded-lg text-[11px] font-medium transition-colors ${
                               selectedPresets[key] === preset.label
                                 ? "bg-secondary text-secondary-foreground"
                                 : "text-muted-foreground hover:bg-secondary/10 hover:text-foreground"
@@ -300,7 +302,7 @@ export function StepAddons() {
                       </div>
 
                       {/* Package override */}
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <PackagePicker
                           globalPkg={basics.pkg || "Premium"}
                           currentPackage={addon.pkgOverride}
@@ -312,9 +314,9 @@ export function StepAddons() {
                             variant="ghost"
                             size="sm"
                             onClick={() => handlePkgOverride(key, undefined)}
-                            className="h-9 px-3 rounded-lg text-sm text-muted-foreground hover:bg-secondary/10 hover:text-foreground font-medium transition-colors"
+                            className="h-8 px-2 rounded-lg text-[11px] text-muted-foreground hover:bg-secondary/10 hover:text-foreground font-medium transition-colors"
                           >
-                            <X className="mr-1 h-4 w-4" />
+                            <X className="mr-1 h-3 w-3" />
                             Reset to Global
                           </Button>
                         )}
@@ -325,49 +327,49 @@ export function StepAddons() {
               );
             })}
           </div>
+        </div>
+      </div>
 
-          <div className="flex items-center justify-between pt-4 gap-4">
-            {/* Left: Back button */}
-            <Button
-              variant="outline"
-              onClick={handleBack}
-              className="bg-white/50 backdrop-blur-md border-white/40 text-foreground hover:bg-white/70 h-14 px-8 rounded-lg text-base font-semibold shadow-md"
-            >
-              <ArrowLeft className="w-5 h-5 mr-2" />
-              Back
-            </Button>
+      {/* Sticky bottom actions for mobile */}
+      <div className="fixed inset-x-0 bottom-0 z-20 bg-background/95 backdrop-blur border-t border-border px-4 py-3 md:hidden">
+        <div className="flex items-center justify-between gap-2">
+          <Button
+            variant="outline"
+            onClick={handleBack}
+            className="flex-1 h-10 rounded-lg text-xs font-medium bg-white/40 backdrop-blur-md border-white/40 hover:bg-white/70"
+          >
+            <ArrowLeft className="w-4 h-4 mr-1" />
+            Back
+          </Button>
 
-            {/* Center: Reset button */}
-            <Button
-              variant="outline"
-              onClick={handleReset}
-              className="bg-white/50 backdrop-blur-md border-white/40 text-foreground hover:bg-white/70 h-14 px-8 rounded-lg text-base font-semibold shadow-md"
-            >
-              <RotateCcw className="w-5 h-5 mr-2" />
-              Reset
-            </Button>
+          <Button
+            variant="outline"
+            onClick={handleReset}
+            className="flex-1 h-10 rounded-lg text-xs font-medium bg-white/40 backdrop-blur-md border-white/40 hover:bg-white/70"
+          >
+            <RotateCcw className="w-4 h-4 mr-1" />
+            Reset
+          </Button>
 
-            {/* Right: Next button */}
-            <Button
-              onClick={handleNext}
-              className="btn-enhanced-primary px-10 h-12 rounded-lg text-base font-semibold"
+          <Button
+            onClick={handleNext}
+            className="flex-[1.6] btn-enhanced-primary h-10 rounded-lg text-xs font-semibold"
+          >
+            Generate Estimate
+            <svg
+              className="w-4 h-4 ml-1"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
             >
-              Generate Estimate
-              <svg
-                className="w-5 h-5 ml-2"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 5l7 7-7 7"
-                />
-              </svg>
-            </Button>
-          </div>
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 5l7 7-7 7"
+              />
+            </svg>
+          </Button>
         </div>
       </div>
     </div>

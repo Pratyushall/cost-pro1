@@ -48,7 +48,7 @@ import {
   RotateCcw,
 } from "lucide-react";
 
-export function StepRooms() {
+export function StepRoomsMobile() {
   const {
     rooms,
     setRooms,
@@ -323,19 +323,19 @@ export function StepRooms() {
   };
 
   return (
-    <div className="max-w-5xl mx-auto">
-      <div className="calculator-card mobile-card rounded-xl overflow-hidden">
-        <div className="section-header">
-          <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
+    <div className="mx-auto max-w-md px-4 pt-4 pb-24 md:hidden">
+      <div className="calculator-card mobile-card rounded-2xl overflow-hidden shadow-lg">
+        <div className="section-header px-4 py-4">
+          <div className="flex flex-col gap-4">
             <div>
-              <CardTitle className="text-2xl sm:text-3xl font-bold text-primary-foreground mb-2">
-                Rooms & Items
+              <CardTitle className="text-2xl font-bold text-primary-foreground mb-1">
+                Rooms &amp; Items
               </CardTitle>
-              <p className="text-primary-foreground/90 text-sm sm:text-base leading-relaxed">
-                Configure each room and select the items you want to include
+              <p className="text-primary-foreground/90 text-sm leading-relaxed">
+                Configure each room and select the items you want to include.
               </p>
               {rooms.prefilled && (
-                <p className="text-xs sm:text-sm text-primary-foreground/80 mt-2">
+                <p className="text-xs text-primary-foreground/80 mt-2">
                   We pre-filled common choices—you can change anything.
                 </p>
               )}
@@ -346,7 +346,7 @@ export function StepRooms() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="btn-mobile bg-primary-foreground/10 text-primary-foreground border-primary-foreground/20 hover:bg-primary-foreground/20 w-full sm:w-auto"
+                  className="w-full bg-primary-foreground/10 text-primary-foreground border-primary-foreground/20 hover:bg-primary-foreground/20"
                 >
                   Bulk Actions
                   <ChevronDown className="ml-2 h-4 w-4" />
@@ -354,13 +354,13 @@ export function StepRooms() {
               </DropdownMenuTrigger>
               <DropdownMenuContent
                 align="end"
-                className="bg-popover border-border w-64 text-popover-foreground"
+                className="bg-popover border-border w-64 text-popover-foreground text-sm"
               >
                 <DropdownMenuItem
                   onClick={() => handleBulkAction("enable-essentials")}
                   className="cursor-pointer focus:bg-accent/10 focus:text-foreground text-popover-foreground"
                 >
-                  Enable Essentials for all rooms
+                  Enable essentials for all rooms
                 </DropdownMenuItem>
                 {basics.bhk && (
                   <DropdownMenuItem
@@ -381,17 +381,17 @@ export function StepRooms() {
           </div>
         </div>
 
-        <CardContent className="section-content">
+        <CardContent className="section-content px-4 pb-4 pt-1">
           <div className="space-y-6">
             {/* Bedrooms */}
-            {rooms.bedrooms.map((bedroom, index) => (
+            {rooms.bedrooms.map((bedroom) => (
               <Card key={bedroom.id} className="elegant-card">
-                <CardHeader>
+                <CardHeader className="pb-3">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="flex items-center gap-3 flex-1 min-w-0">
-                      <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
+                      <div className="w-9 h-9 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
                         <svg
-                          className="w-5 h-5 text-secondary-foreground"
+                          className="w-4 h-4 text-secondary-foreground"
                           fill="none"
                           stroke="currentColor"
                           viewBox="0 0 24 24"
@@ -404,7 +404,7 @@ export function StepRooms() {
                           />
                         </svg>
                       </div>
-                      <CardTitle className="text-base sm:text-lg font-semibold truncate">
+                      <CardTitle className="text-sm font-semibold truncate">
                         {bedroom.role} Bedroom
                       </CardTitle>
                       <Select
@@ -414,10 +414,10 @@ export function StepRooms() {
                           updateBedroom(bedroom.id, { role: value });
                         }}
                       >
-                        <SelectTrigger className="calculator-select mobile-field w-28 sm:w-32 h-9">
+                        <SelectTrigger className="calculator-select w-28 h-8 text-xs">
                           <SelectValue />
                         </SelectTrigger>
-                        <SelectContent className="bg-popover border-border text-popover-foreground">
+                        <SelectContent className="bg-popover border-border text-popover-foreground text-xs">
                           <SelectItem
                             value="Master"
                             className="focus:bg-secondary/10 focus:text-foreground text-popover-foreground"
@@ -449,56 +449,57 @@ export function StepRooms() {
                     {rooms.bedrooms.length > 1 && (
                       <Button
                         variant="ghost"
-                        size="sm"
+                        size="icon"
                         onClick={() => {
                           analytics.bedroomRemoved(bedroom.role);
                           removeBedroom(bedroom.id);
                         }}
-                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     )}
                   </div>
                 </CardHeader>
+
                 <CardContent className="space-y-4">
                   {/* Room Size */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 gap-3">
                     <div>
-                      <Label className="field-label">Room Size</Label>
+                      <Label className="field-label text-xs">Room Size</Label>
                       <Select
                         value={bedroom.size}
                         onValueChange={(value: BedroomSize) =>
                           handleBedroomSizeChange(bedroom.id, value)
                         }
                       >
-                        <SelectTrigger className="calculator-select mobile-field mt-2">
+                        <SelectTrigger className="calculator-select mt-1 h-9 text-xs">
                           <SelectValue />
                         </SelectTrigger>
-                        <SelectContent className="bg-popover border-border text-popover-foreground">
+                        <SelectContent className="bg-popover border-border text-popover-foreground text-xs">
                           <SelectItem
                             value="14x16"
                             className="focus:bg-secondary/10 focus:text-foreground text-popover-foreground"
                           >
-                            14' × 16'
+                            14&apos; × 16&apos;
                           </SelectItem>
                           <SelectItem
                             value="10x12"
                             className="focus:bg-secondary/10 focus:text-foreground text-popover-foreground"
                           >
-                            10' × 12'
+                            10&apos; × 12&apos;
                           </SelectItem>
                           <SelectItem
                             value="10x10"
                             className="focus:bg-secondary/10 focus:text-foreground text-popover-foreground"
                           >
-                            10' × 10'
+                            10&apos; × 10&apos;
                           </SelectItem>
                           <SelectItem
                             value="11.5x11.5"
                             className="focus:bg-secondary/10 focus:text-foreground text-popover-foreground"
                           >
-                            11.5' × 11.5'
+                            11.5&apos; × 11.5&apos;
                           </SelectItem>
                           <SelectItem
                             value="custom"
@@ -512,7 +513,9 @@ export function StepRooms() {
 
                     {bedroom.size === "custom" && (
                       <div>
-                        <Label className="field-label">Custom Size</Label>
+                        <Label className="field-label text-xs">
+                          Custom Size
+                        </Label>
                         <Input
                           placeholder="e.g., 10x12 or 85 m²"
                           value={bedroom.customSize || ""}
@@ -523,10 +526,10 @@ export function StepRooms() {
                               e.target.value
                             )
                           }
-                          className="calculator-input mobile-field mt-2"
+                          className="calculator-input mt-1 h-9 text-xs"
                         />
                         {sizeWarnings[`bedroom-${bedroom.id}`] && (
-                          <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
+                          <p className="text-[11px] text-amber-600 mt-1 flex items-center gap-1">
                             <AlertCircle className="h-3 w-3" />
                             {sizeWarnings[`bedroom-${bedroom.id}`]}
                           </p>
@@ -537,7 +540,7 @@ export function StepRooms() {
 
                   {/* Room Presets */}
                   <div className="flex flex-wrap gap-2 items-center">
-                    <Label className="text-xs sm:text-sm text-muted-foreground w-full sm:w-auto">
+                    <Label className="text-[11px] text-muted-foreground">
                       Quick presets:
                     </Label>
                     {(
@@ -557,7 +560,7 @@ export function StepRooms() {
                         }
                         size="sm"
                         onClick={() => handleRoomPreset(bedroom.id, preset)}
-                        className={`h-8 text-xs ${
+                        className={`h-7 px-2 text-[11px] ${
                           selectedPresets[bedroom.id] === preset
                             ? "bg-secondary text-secondary-foreground"
                             : "calculator-button-secondary"
@@ -569,7 +572,7 @@ export function StepRooms() {
                   </div>
 
                   {/* Items */}
-                  <div className="grid grid-cols-1 gap-3 pt-2">
+                  <div className="grid grid-cols-1 gap-3 pt-1">
                     {Object.entries(bedroom.items).map(([itemKey, item]) => {
                       if (!item) return null;
                       const itemLabels: Record<string, string> = {
@@ -582,9 +585,9 @@ export function StepRooms() {
                       return (
                         <div
                           key={itemKey}
-                          className="border border-border rounded-lg p-4 bg-muted/30"
+                          className="border border-border rounded-lg p-3 bg-muted/30"
                         >
-                          <div className="flex flex-col gap-3">
+                          <div className="flex flex-col gap-2">
                             <div
                               className="flex items-center space-x-3 cursor-pointer"
                               onClick={() => {
@@ -603,7 +606,7 @@ export function StepRooms() {
                               }}
                             >
                               <Switch checked={item.enabled} />
-                              <Label className="field-label cursor-pointer text-sm">
+                              <Label className="field-label cursor-pointer text-xs">
                                 {itemLabels[itemKey]}
                               </Label>
                             </div>
@@ -616,7 +619,10 @@ export function StepRooms() {
                                   updateBedroom(bedroom.id, {
                                     items: {
                                       ...bedroom.items,
-                                      [itemKey]: { ...item, pkgOverride: pkg },
+                                      [itemKey]: {
+                                        ...item,
+                                        pkgOverride: pkg,
+                                      },
                                     },
                                   });
                                   if (pkg) {
@@ -651,7 +657,7 @@ export function StepRooms() {
                 addBedroom();
                 analytics.bedroomAdded("Other");
               }}
-              className="btn-mobile w-full border-dashed border-2 border-border hover:bg-muted/50 h-12"
+              className="w-full border-dashed border-2 border-border hover:bg-muted/50 h-11 text-sm"
             >
               <Plus className="h-4 w-4 mr-2" />
               Add Bedroom
@@ -659,11 +665,11 @@ export function StepRooms() {
 
             {/* Living Room */}
             <Card className="elegant-card">
-              <CardHeader>
+              <CardHeader className="pb-3">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-accent flex items-center justify-center flex-shrink-0">
+                  <div className="w-9 h-9 rounded-lg bg-accent flex items-center justify-center flex-shrink-0">
                     <svg
-                      className="w-5 h-5 text-accent-foreground"
+                      className="w-4 h-4 text-accent-foreground"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -676,15 +682,15 @@ export function StepRooms() {
                       />
                     </svg>
                   </div>
-                  <CardTitle className="text-base sm:text-lg font-semibold">
+                  <CardTitle className="text-sm font-semibold">
                     Living Room
                   </CardTitle>
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-3">
                   <div>
-                    <Label className="field-label">Room Size</Label>
+                    <Label className="field-label text-xs">Room Size</Label>
                     <Select
                       value={rooms.living.size}
                       onValueChange={(value: LivingSize) => {
@@ -692,33 +698,33 @@ export function StepRooms() {
                         analytics.roomSizeChanged("Living", value);
                       }}
                     >
-                      <SelectTrigger className="calculator-select mobile-field mt-2">
+                      <SelectTrigger className="calculator-select mt-1 h-9 text-xs">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="bg-popover border-border text-popover-foreground">
+                      <SelectContent className="bg-popover border-border text-popover-foreground text-xs">
                         <SelectItem
                           value="7x10"
                           className="focus:bg-accent/10 focus:text-foreground text-popover-foreground"
                         >
-                          7' × 10'
+                          7&apos; × 10&apos;
                         </SelectItem>
                         <SelectItem
                           value="10x13"
                           className="focus:bg-accent/10 focus:text-foreground text-popover-foreground"
                         >
-                          10' × 13'
+                          10&apos; × 13&apos;
                         </SelectItem>
                         <SelectItem
                           value="12x18"
                           className="focus:bg-accent/10 focus:text-foreground text-popover-foreground"
                         >
-                          12' × 18'
+                          12&apos; × 18&apos;
                         </SelectItem>
                         <SelectItem
                           value="15x20"
                           className="focus:bg-accent/10 focus:text-foreground text-popover-foreground"
                         >
-                          15' × 20'
+                          15&apos; × 20&apos;
                         </SelectItem>
                         <SelectItem
                           value="custom"
@@ -732,7 +738,7 @@ export function StepRooms() {
 
                   {rooms.living.size === "custom" && (
                     <div>
-                      <Label className="field-label">Custom Size</Label>
+                      <Label className="field-label text-xs">Custom Size</Label>
                       <Input
                         placeholder="e.g., 12x18"
                         value={rooms.living.customSize || ""}
@@ -744,18 +750,18 @@ export function StepRooms() {
                             },
                           })
                         }
-                        className="calculator-input mobile-field mt-2"
+                        className="calculator-input mt-1 h-9 text-xs"
                       />
                     </div>
                   )}
                 </div>
 
-                <div className="space-y-3 pt-2">
+                <div className="space-y-3 pt-1">
                   {/* TV Drawer Unit */}
-                  <div className="border border-border rounded-lg p-4 bg-muted/30">
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="border border-border rounded-lg p-3 bg-muted/30">
+                    <div className="flex flex-col gap-3">
                       <div
-                        className="flex items-center space-x-3 flex-1 cursor-pointer"
+                        className="flex items-center space-x-3 cursor-pointer"
                         onClick={() => {
                           const newEnabled = !rooms.living.tvDrawerUnit.enabled;
                           setRooms({
@@ -775,7 +781,7 @@ export function StepRooms() {
                         }}
                       >
                         <Switch checked={rooms.living.tvDrawerUnit.enabled} />
-                        <Label className="field-label cursor-pointer">
+                        <Label className="field-label cursor-pointer text-sm">
                           TV Drawer Unit
                         </Label>
                       </div>
@@ -814,10 +820,10 @@ export function StepRooms() {
                   </div>
 
                   {/* TV Panel */}
-                  <div className="border border-border rounded-lg p-4 bg-muted/30 space-y-3">
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="border border-border rounded-lg p-3 bg-muted/30 space-y-3">
+                    <div className="flex flex-col gap-3">
                       <div
-                        className="flex items-center space-x-3 flex-1 cursor-pointer"
+                        className="flex items-center space-x-3 cursor-pointer"
                         onClick={() => {
                           const newEnabled = !rooms.living.tvPanel.enabled;
                           setRooms({
@@ -837,97 +843,95 @@ export function StepRooms() {
                         }}
                       >
                         <Switch checked={rooms.living.tvPanel.enabled} />
-                        <Label className="field-label cursor-pointer">
+                        <Label className="field-label cursor-pointer text-sm">
                           TV Unit Panelling
                         </Label>
                       </div>
 
                       {rooms.living.tvPanel.enabled && (
-                        <PackagePicker
-                          globalPkg={basics.pkg}
-                          currentPackage={rooms.living.tvPanel.pkgOverride}
-                          onPackageChange={(pkg) => {
-                            setRooms({
-                              living: {
-                                ...rooms.living,
-                                tvPanel: {
-                                  ...rooms.living.tvPanel,
-                                  pkgOverride: pkg,
-                                },
-                              },
-                            });
-                            if (pkg) {
-                              analytics.itemPkgOverrideSet(
-                                "Living",
-                                "TV Panel",
-                                pkg
-                              );
-                            } else {
-                              analytics.itemPkgOverrideReset(
-                                "Living",
-                                "TV Panel"
-                              );
-                            }
-                          }}
-                          itemName="TV Panel"
-                        />
-                      )}
-                    </div>
-
-                    {rooms.living.tvPanel.enabled && (
-                      <>
-                        {/* TV Panel presets with selected state */}
-                        <div className="flex flex-wrap gap-2 items-center">
-                          <Label className="text-xs sm:text-sm text-muted-foreground w-full sm:w-auto">
-                            Quick presets:
-                          </Label>
-                          {(
-                            ["Small", "Medium", "Feature"] as TVPanelPreset[]
-                          ).map((preset) => (
-                            <Button
-                              key={preset}
-                              variant={
-                                selectedTVPreset === preset
-                                  ? "default"
-                                  : "outline"
-                              }
-                              size="sm"
-                              onClick={() => handleTVPanelPreset(preset)}
-                              className={`h-8 text-xs ${
-                                selectedTVPreset === preset
-                                  ? "bg-accent text-accent-foreground"
-                                  : "calculator-button-secondary"
-                              }`}
-                            >
-                              {preset}
-                            </Button>
-                          ))}
-                        </div>
-
-                        <div>
-                          <Label className="field-label text-sm">
-                            Panel Area (sq ft)
-                          </Label>
-                          <Input
-                            type="number"
-                            value={rooms.living.tvPanel.panelSqft || ""}
-                            onChange={(e) =>
+                        <>
+                          <PackagePicker
+                            globalPkg={basics.pkg}
+                            currentPackage={rooms.living.tvPanel.pkgOverride}
+                            onPackageChange={(pkg) => {
                               setRooms({
                                 living: {
                                   ...rooms.living,
                                   tvPanel: {
                                     ...rooms.living.tvPanel,
-                                    panelSqft: Number(e.target.value),
+                                    pkgOverride: pkg,
                                   },
                                 },
-                              })
-                            }
-                            className="calculator-input mobile-field mt-1"
-                            placeholder="60"
+                              });
+                              if (pkg) {
+                                analytics.itemPkgOverrideSet(
+                                  "Living",
+                                  "TV Panel",
+                                  pkg
+                                );
+                              } else {
+                                analytics.itemPkgOverrideReset(
+                                  "Living",
+                                  "TV Panel"
+                                );
+                              }
+                            }}
+                            itemName="TV Panel"
                           />
-                        </div>
-                      </>
-                    )}
+
+                          {/* TV Panel presets */}
+                          <div className="flex flex-wrap gap-2 items-center">
+                            <Label className="text-[11px] text-muted-foreground">
+                              Quick presets:
+                            </Label>
+                            {(
+                              ["Small", "Medium", "Feature"] as TVPanelPreset[]
+                            ).map((preset) => (
+                              <Button
+                                key={preset}
+                                variant={
+                                  selectedTVPreset === preset
+                                    ? "default"
+                                    : "outline"
+                                }
+                                size="sm"
+                                onClick={() => handleTVPanelPreset(preset)}
+                                className={`h-7 px-2 text-[11px] ${
+                                  selectedTVPreset === preset
+                                    ? "bg-accent text-accent-foreground"
+                                    : "calculator-button-secondary"
+                                }`}
+                              >
+                                {preset}
+                              </Button>
+                            ))}
+                          </div>
+
+                          <div>
+                            <Label className="field-label text-xs">
+                              Panel Area (sq ft)
+                            </Label>
+                            <Input
+                              type="number"
+                              value={rooms.living.tvPanel.panelSqft || ""}
+                              onChange={(e) =>
+                                setRooms({
+                                  living: {
+                                    ...rooms.living,
+                                    tvPanel: {
+                                      ...rooms.living.tvPanel,
+                                      panelSqft: Number(e.target.value),
+                                    },
+                                  },
+                                })
+                              }
+                              className="calculator-input mt-1 h-9 text-xs"
+                              placeholder="60"
+                            />
+                          </div>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
               </CardContent>
@@ -935,11 +939,11 @@ export function StepRooms() {
 
             {/* Pooja Room */}
             <Card className="elegant-card">
-              <CardHeader>
+              <CardHeader className="pb-3">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
+                  <div className="w-9 h-9 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
                     <svg
-                      className="w-5 h-5 text-secondary-foreground"
+                      className="w-4 h-4 text-secondary-foreground"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -952,15 +956,15 @@ export function StepRooms() {
                       />
                     </svg>
                   </div>
-                  <CardTitle className="text-base sm:text-lg font-semibold">
+                  <CardTitle className="text-sm font-semibold">
                     Pooja Room
                   </CardTitle>
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-3">
                   <div>
-                    <Label className="field-label">Room Size</Label>
+                    <Label className="field-label text-xs">Room Size</Label>
                     <Select
                       value={rooms.pooja.size}
                       onValueChange={(value: PoojaSize) => {
@@ -968,21 +972,21 @@ export function StepRooms() {
                         analytics.roomSizeChanged("Pooja", value);
                       }}
                     >
-                      <SelectTrigger className="calculator-select mobile-field mt-2">
+                      <SelectTrigger className="calculator-select mt-1 h-9 text-xs">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="bg-popover border-border text-popover-foreground">
+                      <SelectContent className="bg-popover border-border text-popover-foreground text-xs">
                         <SelectItem
                           value="9x9"
                           className="focus:bg-secondary/10 focus:text-foreground text-popover-foreground"
                         >
-                          9' × 9'
+                          9&apos; × 9&apos;
                         </SelectItem>
                         <SelectItem
                           value="3x3"
                           className="focus:bg-secondary/10 focus:text-foreground text-popover-foreground"
                         >
-                          3' × 3'
+                          3&apos; × 3&apos;
                         </SelectItem>
                         <SelectItem
                           value="custom"
@@ -996,7 +1000,7 @@ export function StepRooms() {
 
                   {rooms.pooja.size === "custom" && (
                     <div>
-                      <Label className="field-label">Custom Size</Label>
+                      <Label className="field-label text-xs">Custom Size</Label>
                       <Input
                         placeholder="e.g., 5x6"
                         value={rooms.pooja.customSize || ""}
@@ -1008,17 +1012,17 @@ export function StepRooms() {
                             },
                           })
                         }
-                        className="calculator-input mobile-field mt-2"
+                        className="calculator-input mt-1 h-9 text-xs"
                       />
                     </div>
                   )}
                 </div>
 
-                <div className="space-y-3 pt-2">
-                  <div className="border border-border rounded-lg p-4 bg-muted/30 space-y-3">
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="space-y-3 pt-1">
+                  <div className="border border-border rounded-lg p-3 bg-muted/30 space-y-3">
+                    <div className="flex flex-col gap-3">
                       <div
-                        className="flex items-center space-x-3 flex-1 cursor-pointer"
+                        className="flex items-center space-x-3 cursor-pointer"
                         onClick={() => {
                           const newEnabled = !rooms.pooja.doors.enabled;
                           setRooms({
@@ -1034,65 +1038,68 @@ export function StepRooms() {
                         }}
                       >
                         <Switch checked={rooms.pooja.doors.enabled} />
-                        <Label className="field-label cursor-pointer">
+                        <Label className="field-label cursor-pointer text-sm">
                           Doors
                         </Label>
                       </div>
 
                       {rooms.pooja.doors.enabled && (
-                        <PackagePicker
-                          globalPkg={basics.pkg}
-                          currentPackage={rooms.pooja.doors.pkgOverride}
-                          onPackageChange={(pkg) => {
-                            setRooms({
-                              pooja: {
-                                ...rooms.pooja,
-                                doors: {
-                                  ...rooms.pooja.doors,
-                                  pkgOverride: pkg,
+                        <>
+                          <PackagePicker
+                            globalPkg={basics.pkg}
+                            currentPackage={rooms.pooja.doors.pkgOverride}
+                            onPackageChange={(pkg) => {
+                              setRooms({
+                                pooja: {
+                                  ...rooms.pooja,
+                                  doors: {
+                                    ...rooms.pooja.doors,
+                                    pkgOverride: pkg,
+                                  },
                                 },
-                              },
-                            });
-                            if (pkg) {
-                              analytics.itemPkgOverrideSet(
-                                "Pooja",
-                                "Doors",
-                                pkg
-                              );
-                            } else {
-                              analytics.itemPkgOverrideReset("Pooja", "Doors");
-                            }
-                          }}
-                          itemName="Doors"
-                        />
+                              });
+                              if (pkg) {
+                                analytics.itemPkgOverrideSet(
+                                  "Pooja",
+                                  "Doors",
+                                  pkg
+                                );
+                              } else {
+                                analytics.itemPkgOverrideReset(
+                                  "Pooja",
+                                  "Doors"
+                                );
+                              }
+                            }}
+                            itemName="Doors"
+                          />
+
+                          <div>
+                            <Label className="field-label text-xs">
+                              Number of Doors
+                            </Label>
+                            <Input
+                              type="number"
+                              value={rooms.pooja.doors.qty || ""}
+                              onChange={(e) =>
+                                setRooms({
+                                  pooja: {
+                                    ...rooms.pooja,
+                                    doors: {
+                                      ...rooms.pooja.doors,
+                                      qty: Number(e.target.value),
+                                    },
+                                  },
+                                })
+                              }
+                              className="calculator-input mt-1 h-9 text-xs"
+                              placeholder="0"
+                              min={0}
+                            />
+                          </div>
+                        </>
                       )}
                     </div>
-
-                    {rooms.pooja.doors.enabled && (
-                      <div>
-                        <Label className="field-label text-sm">
-                          Number of Doors
-                        </Label>
-                        <Input
-                          type="number"
-                          value={rooms.pooja.doors.qty || ""}
-                          onChange={(e) =>
-                            setRooms({
-                              pooja: {
-                                ...rooms.pooja,
-                                doors: {
-                                  ...rooms.pooja.doors,
-                                  qty: Number(e.target.value),
-                                },
-                              },
-                            })
-                          }
-                          className="calculator-input mobile-field mt-1"
-                          placeholder="0"
-                          min={0}
-                        />
-                      </div>
-                    )}
                   </div>
                 </div>
               </CardContent>
@@ -1100,11 +1107,11 @@ export function StepRooms() {
 
             {/* Kitchen */}
             <Card className="elegant-card">
-              <CardHeader>
+              <CardHeader className="pb-3">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-accent flex items-center justify-center flex-shrink-0">
+                  <div className="w-9 h-9 rounded-lg bg-accent flex items-center justify-center flex-shrink-0">
                     <svg
-                      className="w-5 h-5 text-accent-foreground"
+                      className="w-4 h-4 text-accent-foreground"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -1117,25 +1124,25 @@ export function StepRooms() {
                       />
                     </svg>
                   </div>
-                  <CardTitle className="text-base sm:text-lg font-semibold">
+                  <CardTitle className="text-sm font-semibold">
                     Kitchen
                   </CardTitle>
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-3">
                   <div>
-                    <Label className="field-label">Kitchen Type</Label>
+                    <Label className="field-label text-xs">Kitchen Type</Label>
                     <Select
                       value={rooms.kitchen.type}
                       onValueChange={(value: KitchenType) =>
                         handleKitchenTypeOrSizeChange(value, undefined)
                       }
                     >
-                      <SelectTrigger className="calculator-select mobile-field mt-2">
+                      <SelectTrigger className="calculator-select mt-1 h-9 text-xs">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="bg-popover border-border text-popover-foreground">
+                      <SelectContent className="bg-popover border-border text-popover-foreground text-xs">
                         <SelectItem
                           value="Parallel"
                           className="focus:bg-accent/10 focus:text-foreground text-popover-foreground"
@@ -1157,35 +1164,36 @@ export function StepRooms() {
                       </SelectContent>
                     </Select>
                   </div>
+
                   <div>
-                    <Label className="field-label">Kitchen Size</Label>
+                    <Label className="field-label text-xs">Kitchen Size</Label>
                     <Select
                       value={rooms.kitchen.size}
                       onValueChange={(value: KitchenSize) =>
                         handleKitchenTypeOrSizeChange(undefined, value)
                       }
                     >
-                      <SelectTrigger className="calculator-select mobile-field mt-2">
+                      <SelectTrigger className="calculator-select mt-1 h-9 text-xs">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="bg-popover border-border text-popover-foreground">
+                      <SelectContent className="bg-popover border-border text-popover-foreground text-xs">
                         <SelectItem
                           value="8x10"
                           className="focus:bg-accent/10 focus:text-foreground text-popover-foreground"
                         >
-                          8' × 10'
+                          8&apos; × 10&apos;
                         </SelectItem>
                         <SelectItem
                           value="10x12"
                           className="focus:bg-accent/10 focus:text-foreground text-popover-foreground"
                         >
-                          10' × 12'
+                          10&apos; × 12&apos;
                         </SelectItem>
                         <SelectItem
                           value="12x14"
                           className="focus:bg-accent/10 focus:text-foreground text-popover-foreground"
                         >
-                          12' × 14'
+                          12&apos; × 14&apos;
                         </SelectItem>
                         <SelectItem
                           value="custom"
@@ -1199,7 +1207,7 @@ export function StepRooms() {
 
                   {rooms.kitchen.size === "custom" && (
                     <div>
-                      <Label className="field-label">Custom Size</Label>
+                      <Label className="field-label text-xs">Custom Size</Label>
                       <Input
                         placeholder="e.g., 10x14"
                         value={rooms.kitchen.customSize || ""}
@@ -1211,18 +1219,18 @@ export function StepRooms() {
                             },
                           })
                         }
-                        className="calculator-input mobile-field mt-2"
+                        className="calculator-input mt-1 h-9 text-xs"
                       />
                     </div>
                   )}
                 </div>
 
-                <div className="space-y-3 pt-2">
+                <div className="space-y-3 pt-1">
                   {/* Base Unit */}
-                  <div className="border border-border rounded-lg p-4 bg-muted/30">
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="border border-border rounded-lg p-3 bg-muted/30">
+                    <div className="flex flex-col gap-3">
                       <div
-                        className="flex items-center space-x-3 flex-1 cursor-pointer"
+                        className="flex items-center space-x-3 cursor-pointer"
                         onClick={() => {
                           const newEnabled = !rooms.kitchen.baseUnit.enabled;
                           setRooms({
@@ -1242,7 +1250,7 @@ export function StepRooms() {
                         }}
                       >
                         <Switch checked={rooms.kitchen.baseUnit.enabled} />
-                        <Label className="field-label cursor-pointer">
+                        <Label className="field-label cursor-pointer text-sm">
                           Base Unit
                         </Label>
                       </div>
@@ -1281,9 +1289,9 @@ export function StepRooms() {
                   </div>
 
                   {/* Quantity inputs */}
-                  <div className="grid grid-cols-1 gap-4">
+                  <div className="grid grid-cols-1 gap-3">
                     <div>
-                      <Label className="field-label text-sm">
+                      <Label className="field-label text-xs">
                         Tandem Baskets
                       </Label>
                       <Input
@@ -1306,13 +1314,13 @@ export function StepRooms() {
                             qty
                           );
                         }}
-                        className="calculator-input mobile-field mt-1"
+                        className="calculator-input mt-1 h-9 text-xs"
                         placeholder="0"
                         min={0}
                       />
                     </div>
                     <div>
-                      <Label className="field-label text-sm">
+                      <Label className="field-label text-xs">
                         Bottle Pullout
                       </Label>
                       <Input
@@ -1335,7 +1343,7 @@ export function StepRooms() {
                             qty
                           );
                         }}
-                        className="calculator-input mobile-field mt-1"
+                        className="calculator-input mt-1 h-9 text-xs"
                         placeholder="0"
                         min={0}
                       />
@@ -1343,9 +1351,9 @@ export function StepRooms() {
                   </div>
 
                   {rooms.kitchen.tandemBaskets.qty > 0 && (
-                    <div className="border border-border rounded-lg p-4 bg-muted/30">
-                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                        <Label className="field-label">
+                    <div className="border border-border rounded-lg p-3 bg-muted/30">
+                      <div className="flex flex-col gap-2">
+                        <Label className="field-label text-xs">
                           Tandem Baskets ({rooms.kitchen.tandemBaskets.qty})
                         </Label>
                         <PackagePicker
@@ -1383,9 +1391,9 @@ export function StepRooms() {
                   )}
 
                   {rooms.kitchen.bottlePullout.qty > 0 && (
-                    <div className="border border-border rounded-lg p-4 bg-muted/30">
-                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                        <Label className="field-label">
+                    <div className="border border-border rounded-lg p-3 bg-muted/30">
+                      <div className="flex flex-col gap-2">
+                        <Label className="field-label text-xs">
                           Bottle Pullout ({rooms.kitchen.bottlePullout.qty})
                         </Label>
                         <PackagePicker
@@ -1423,10 +1431,10 @@ export function StepRooms() {
                   )}
 
                   {/* Corner & Wicker */}
-                  <div className="border border-border rounded-lg p-4 bg-muted/30">
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="border border-border rounded-lg p-3 bg-muted/30">
+                    <div className="flex flex-col gap-3">
                       <div
-                        className="flex items-center space-x-3 flex-1 cursor-pointer"
+                        className="flex items-center space-x-3 cursor-pointer"
                         onClick={() => {
                           const newEnabled = !rooms.kitchen.cornerUnit.enabled;
                           setRooms({
@@ -1446,7 +1454,7 @@ export function StepRooms() {
                         }}
                       >
                         <Switch checked={rooms.kitchen.cornerUnit.enabled} />
-                        <Label className="field-label cursor-pointer">
+                        <Label className="field-label cursor-pointer text-sm">
                           Corner Unit
                         </Label>
                       </div>
@@ -1483,10 +1491,10 @@ export function StepRooms() {
                     </div>
                   </div>
 
-                  <div className="border border-border rounded-lg p-4 bg-muted/30">
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="border border-border rounded-lg p-3 bg-muted/30">
+                    <div className="flex flex-col gap-3">
                       <div
-                        className="flex items-center space-x-3 flex-1 cursor-pointer"
+                        className="flex items-center space-x-3 cursor-pointer"
                         onClick={() => {
                           const newEnabled =
                             !rooms.kitchen.wickerBasket.enabled;
@@ -1507,7 +1515,7 @@ export function StepRooms() {
                         }}
                       >
                         <Switch checked={rooms.kitchen.wickerBasket.enabled} />
-                        <Label className="field-label cursor-pointer">
+                        <Label className="field-label cursor-pointer text-sm">
                           Wicker Basket
                         </Label>
                       </div>
@@ -1550,35 +1558,32 @@ export function StepRooms() {
             </Card>
 
             {/* Action Buttons */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between pt-4 gap-3 sm:gap-4">
-              {/* Left: Back button */}
+            <div className="flex flex-col gap-2 pt-2">
               <Button
                 variant="outline"
                 onClick={handleBack}
-                className="btn-mobile bg-white/50 backdrop-blur-md border-white/40 text-foreground hover:bg-white/70 h-12 sm:h-14 px-6 sm:px-8 rounded-lg text-base font-semibold shadow-md order-2 sm:order-1"
+                className="w-full bg-white/50 backdrop-blur-md border-white/40 text-foreground hover:bg-white/70 h-11 rounded-lg text-sm font-semibold shadow-md"
               >
-                <ArrowLeft className="w-5 h-5 mr-2" />
+                <ArrowLeft className="w-4 h-4 mr-2" />
                 Back
               </Button>
 
-              {/* Center: Reset button */}
               <Button
                 variant="outline"
                 onClick={handleReset}
-                className="btn-mobile bg-white/50 backdrop-blur-md border-white/40 text-foreground hover:bg-white/70 h-12 sm:h-14 px-6 sm:px-8 rounded-lg text-base font-semibold shadow-md order-3 sm:order-2"
+                className="w-full bg-white/50 backdrop-blur-md border-white/40 text-foreground hover:bg-white/70 h-11 rounded-lg text-sm font-semibold shadow-md"
               >
-                <RotateCcw className="w-5 h-5 mr-2" />
+                <RotateCcw className="w-4 h-4 mr-2" />
                 Reset
               </Button>
 
-              {/* Right: Next button */}
               <Button
                 onClick={handleNext}
-                className="btn-enhanced-primary btn-mobile px-8 sm:px-10 h-12 order-1 sm:order-3"
+                className="w-full btn-enhanced-primary h-11 rounded-lg text-sm font-semibold"
               >
                 Next
                 <svg
-                  className="w-5 h-5 ml-2"
+                  className="w-4 h-4 ml-2"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"

@@ -19,14 +19,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Badge } from "@/components/ui/badge";
-import {
-  ChevronRight,
-  MoreVertical,
-  X,
-  ArrowLeft,
-  RotateCcw,
-} from "lucide-react";
+import { ChevronRight, MoreVertical, ArrowLeft, RotateCcw } from "lucide-react";
 import { analytics } from "@/lib/analytics";
 import { normalizeAreaInput } from "@/lib/area-utils";
 import {
@@ -41,7 +34,7 @@ import type { Package, SingleLineItem } from "@/lib/types";
 
 type SingleLineKey = "falseCeiling" | "painting" | "electricalWiring";
 
-export function StepSingleLine() {
+export function StepSingleLineMobile() {
   const { basics, singleLine, setSingleLine, setCurrentStep, resetStore } =
     useEstimatorStore();
   const [startTime] = useState(Date.now());
@@ -76,12 +69,6 @@ export function StepSingleLine() {
 
     setSingleLine({ [key]: newItem });
     analytics.singleScopeToggled(key, enabled);
-
-    if (enabled) {
-      setTimeout(() => {
-        document.getElementById(`${key}-area`)?.focus();
-      }, 100);
-    }
   };
 
   const handlePresetClick = (key: SingleLineKey, percent: number) => {
@@ -241,7 +228,7 @@ export function StepSingleLine() {
     setCurrentStep(3);
   };
 
-  const handleReset = () => {
+  const handleResetAll = () => {
     if (
       confirm("Are you sure you want to reset all data? This cannot be undone.")
     ) {
@@ -255,28 +242,31 @@ export function StepSingleLine() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="calculator-card rounded-xl overflow-hidden">
-        <div className="section-header">
-          <h2 className="text-3xl font-bold text-primary-foreground mb-2">
+    <div className="mx-auto max-w-md px-4 pt-4 pb-24 md:hidden">
+      <div className="calculator-card rounded-2xl overflow-hidden shadow-lg">
+        {/* Header */}
+        <div className="section-header px-4 py-4 sm:px-5">
+          <h2 className="text-2xl font-bold text-primary-foreground mb-1">
             Quick scope
           </h2>
-          <p className="text-primary-foreground/90 text-base leading-relaxed">
-            Enable what you need and set coverage, we'll handle the
+          <p className="text-primary-foreground/90 text-sm leading-relaxed">
+            Enable what you need and set coverage, we&apos;ll handle the
             calculations.
           </p>
           {isEstimated && totalSqft > 0 && (
-            <div className="mt-3 inline-block bg-primary-foreground/10 border border-primary-foreground/20 px-3 py-1.5 rounded-lg">
-              <span className="text-sm text-primary-foreground font-medium">
+            <div className="mt-3 inline-block bg-primary-foreground/10 border border-primary-foreground/20 px-3 py-1 rounded-lg">
+              <span className="text-xs text-primary-foreground font-medium">
                 Using ~{totalSqft.toLocaleString()} sq ft (estimated)
               </span>
             </div>
           )}
         </div>
 
-        <div className="section-content">
-          <div className="elegant-card p-6 space-y-4">
-            <Label className="field-label text-base">Room shortcuts</Label>
+        {/* Content */}
+        <div className="section-content px-4 pb-4 pt-1 space-y-5">
+          {/* Room shortcuts */}
+          <div className="elegant-card rounded-xl p-4 space-y-3">
+            <Label className="field-label text-sm">Room shortcuts</Label>
             <div className="flex flex-wrap gap-2">
               {(Object.keys(ROOM_SHORTCUTS) as RoomShortcut[]).map(
                 (shortcut) => (
@@ -285,7 +275,7 @@ export function StepSingleLine() {
                     variant="outline"
                     size="sm"
                     onClick={() => handleRoomShortcut(shortcut)}
-                    className={`text-sm transition-colors ${
+                    className={`text-xs px-3 py-1.5 transition-colors ${
                       selectedShortcut === shortcut
                         ? "bg-secondary text-secondary-foreground border-secondary"
                         : "border-secondary/30 hover:bg-secondary/10 hover:border-secondary"
@@ -298,23 +288,22 @@ export function StepSingleLine() {
             </div>
           </div>
 
-          <div className="divider" />
-
-          <div className="flex items-center justify-between mb-6">
-            <Label className="field-label text-base">Bulk actions</Label>
+          {/* Bulk actions */}
+          <div className="flex items-center justify-between">
+            <Label className="field-label text-sm">Bulk actions</Label>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="ghost"
-                  size="sm"
-                  className="hover:bg-secondary/10"
+                  size="icon"
+                  className="h-8 w-8 hover:bg-secondary/10"
                 >
                   <MoreVertical className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent
                 align="end"
-                className="bg-popover border-border text-popover-foreground"
+                className="bg-popover border-border text-popover-foreground text-sm"
               >
                 <DropdownMenuItem
                   onClick={() => handleBulkApply("100%")}
@@ -344,19 +333,18 @@ export function StepSingleLine() {
             </DropdownMenu>
           </div>
 
+          {/* Single line items */}
           <div className="space-y-4">
             {(Object.keys(singleLine) as SingleLineKey[]).map((key) => {
               const item = singleLine[key];
-              const isOverridden =
-                item.pkgOverride && item.pkgOverride !== basics.pkg;
 
               return (
-                <div key={key} className="elegant-card p-6 space-y-4">
-                  {/* Header - clickable to toggle */}
-                  <div
-                    className="flex cursor-pointer items-center justify-between"
-                    onClick={() => handleToggle(key, !item.enabled)}
-                  >
+                <div
+                  key={key}
+                  className="elegant-card rounded-xl p-4 space-y-3"
+                >
+                  {/* Header / toggle */}
+                  <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <Switch
                         checked={item.enabled}
@@ -364,16 +352,16 @@ export function StepSingleLine() {
                           handleToggle(key, checked)
                         }
                       />
-                      <Label className="cursor-pointer text-lg font-semibold text-foreground">
+                      <Label className="text-sm font-semibold text-foreground">
                         {getItemLabel(key)}
                       </Label>
                     </div>
                   </div>
 
-                  {/* Controls - only show when enabled */}
+                  {/* Controls when enabled */}
                   {item.enabled && (
-                    <div className="space-y-4 pl-10 pt-2">
-                      {/* Scope Presets */}
+                    <div className="space-y-3 pt-1">
+                      {/* Scope presets */}
                       <div className="flex items-center gap-2 flex-wrap">
                         {SCOPE_PRESETS.map((preset) => (
                           <Button
@@ -385,7 +373,7 @@ export function StepSingleLine() {
                             }
                             size="sm"
                             onClick={() => handlePresetClick(key, preset.value)}
-                            className={`text-sm ${
+                            className={`text-xs ${
                               selectedPresets[key] === preset.value
                                 ? "bg-secondary text-secondary-foreground hover:bg-secondary/90"
                                 : "border-secondary/30 hover:bg-secondary/10 hover:border-secondary"
@@ -405,7 +393,7 @@ export function StepSingleLine() {
                           }
                           size="sm"
                           onClick={() => handleAreaModeChange(key, "sqft")}
-                          className={`text-sm ${
+                          className={`text-xs ${
                             item.areaMode === "sqft" ||
                             (item.areaPercent !== 100 &&
                               item.areaPercent !== 80 &&
@@ -418,7 +406,7 @@ export function StepSingleLine() {
                         </Button>
                       </div>
 
-                      {/* Area Input */}
+                      {/* Area input */}
                       <div className="flex items-center gap-2">
                         <div className="flex-1">
                           <Input
@@ -444,7 +432,7 @@ export function StepSingleLine() {
                             placeholder={
                               item.areaMode === "percent" ? "%" : "sq ft"
                             }
-                            className="calculator-input h-11 rounded-lg"
+                            className="calculator-input h-10 rounded-lg text-sm"
                           />
                         </div>
                         <Select
@@ -453,10 +441,10 @@ export function StepSingleLine() {
                             handleAreaModeChange(key, value)
                           }
                         >
-                          <SelectTrigger className="calculator-select w-28 h-11 rounded-lg">
+                          <SelectTrigger className="calculator-select w-24 h-10 rounded-lg text-xs">
                             <SelectValue />
                           </SelectTrigger>
-                          <SelectContent className="bg-popover border-border text-popover-foreground">
+                          <SelectContent className="bg-popover border-border text-popover-foreground text-xs">
                             <SelectItem
                               value="percent"
                               className="focus:bg-secondary/10 focus:text-foreground text-popover-foreground"
@@ -473,18 +461,18 @@ export function StepSingleLine() {
                         </Select>
                       </div>
 
-                      {/* Calculated Area Display */}
-                      <p className="field-hint">
+                      {/* Calculated area display */}
+                      <p className="field-hint text-xs text-muted-foreground">
                         = {item.areaSqft.toLocaleString()} sq ft
                         {item.areaMode === "percent" &&
                           ` (${item.areaPercent}% of total)`}
                       </p>
 
-                      {/* Package Override */}
-                      <div className="flex items-center gap-3">
+                      {/* Package override */}
+                      <div className="flex items-center gap-2">
                         <Label
                           htmlFor={`${key}-pkg`}
-                          className="field-label text-sm"
+                          className="field-label text-xs"
                         >
                           Package:
                         </Label>
@@ -496,11 +484,11 @@ export function StepSingleLine() {
                         >
                           <SelectTrigger
                             id={`${key}-pkg`}
-                            className="calculator-select w-40 h-11 rounded-lg"
+                            className="calculator-select w-32 h-10 rounded-lg text-xs"
                           >
                             <SelectValue placeholder="Select" />
                           </SelectTrigger>
-                          <SelectContent className="bg-popover border-border text-popover-foreground">
+                          <SelectContent className="bg-popover border-border text-popover-foreground text-xs">
                             <SelectItem
                               value="Premium"
                               className="focus:bg-accent/10 focus:text-foreground text-popover-foreground"
@@ -515,9 +503,6 @@ export function StepSingleLine() {
                             </SelectItem>
                           </SelectContent>
                         </Select>
-                        {!item.pkgOverride && basics.pkg && (
-                          <span className="text-sm text-muted-foreground"></span>
-                        )}
                       </div>
                     </div>
                   )}
@@ -525,37 +510,35 @@ export function StepSingleLine() {
               );
             })}
           </div>
+        </div>
+      </div>
 
-          <div className="flex items-center justify-between pt-6 gap-4">
-            {/* Left: Back button */}
-            <Button
-              variant="outline"
-              onClick={handleBack}
-              className="bg-white/50 backdrop-blur-md border-white/40 text-foreground hover:bg-white/70 h-14 px-8 rounded-lg text-base font-semibold shadow-md"
-            >
-              <ArrowLeft className="w-5 h-5 mr-2" />
-              Back
-            </Button>
-
-            {/* Center: Reset button */}
-            <Button
-              variant="outline"
-              onClick={handleReset}
-              className="bg-white/50 backdrop-blur-md border-white/40 text-foreground hover:bg-white/70 h-14 px-8 rounded-lg text-base font-semibold shadow-md"
-            >
-              <RotateCcw className="w-5 h-5 mr-2" />
-              Reset
-            </Button>
-
-            {/* Right: Next button */}
-            <Button
-              onClick={handleNext}
-              className="btn-enhanced-primary px-10 h-12 rounded-lg text-base font-semibold"
-            >
-              Next
-              <ChevronRight className="h-5 w-5 ml-2" />
-            </Button>
-          </div>
+      {/* Sticky bottom actions for mobile */}
+      <div className="fixed inset-x-0 bottom-0 z-20 bg-background/95 backdrop-blur border-t border-border px-4 py-3 md:hidden">
+        <div className="flex items-center justify-between gap-2">
+          <Button
+            variant="outline"
+            onClick={handleBack}
+            className="flex-1 h-10 rounded-lg text-xs font-medium"
+          >
+            <ArrowLeft className="w-4 h-4 mr-1" />
+            Back
+          </Button>
+          <Button
+            variant="outline"
+            onClick={handleResetAll}
+            className="flex-1 h-10 rounded-lg text-xs font-medium"
+          >
+            <RotateCcw className="w-4 h-4 mr-1" />
+            Reset
+          </Button>
+          <Button
+            onClick={handleNext}
+            className="flex-[1.4] btn-enhanced-primary h-10 rounded-lg text-xs font-semibold"
+          >
+            Next
+            <ChevronRight className="h-4 w-4 ml-1" />
+          </Button>
         </div>
       </div>
     </div>
