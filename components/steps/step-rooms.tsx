@@ -323,7 +323,7 @@ export function StepRooms() {
   };
 
   return (
-    <div className="max-w-5xl mx-auto">
+    <div className="max-w-5xl mx-auto px-2 sm:px-6 lg:px-0">
       <div className="calculator-card mobile-card rounded-xl overflow-hidden">
         <div className="section-header">
           <div className="flex flex-col sm:flex-row items-start justify-between gap-4">

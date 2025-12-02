@@ -180,7 +180,7 @@ export function StepAddons() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-0">
+    <div className="max-w-4xl mx-auto px-2 sm:px-6 lg:px-0">
       <div className="calculator-card rounded-xl overflow-hidden">
         {/* Header Section with Primary Color */}
         <div className="section-header px-4 py-5 sm:px-6 sm:py-6 md:px-8">

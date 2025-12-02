@@ -1,7 +1,6 @@
 "use client";
 
 import type React from "react";
-import { resetStore } from "@/store/reset";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useEstimatorStore } from "@/store/estimator";
 import { Button } from "@/components/ui/button";
@@ -26,7 +25,7 @@ import {
 const STORAGE_KEY = "estimator_basics_v1";
 
 export function StepBasics() {
-  const { basics, setBasics, setCurrentStep } = useEstimatorStore();
+  const { basics, setBasics, setCurrentStep, resetStore } = useEstimatorStore();
   const [areaInput, setAreaInput] = useState("");
   const [approximateRange, setApproximateRange] = useState("");
   const [estimateMessage, setEstimateMessage] = useState("");
@@ -242,7 +241,7 @@ export function StepBasics() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-0">
+    <div className="max-w-4xl mx-auto px-2 sm:px-6 lg:px-0">
       <div className="calculator-card rounded-xl overflow-hidden">
         {/* Header Section with Primary Color */}
         <div className="section-header px-4 py-6 sm:px-6 sm:py-8 md:px-8">

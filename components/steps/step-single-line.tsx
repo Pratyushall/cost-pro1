@@ -248,7 +248,7 @@ export function StepSingleLine() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-0">
+    <div className="max-w-4xl mx-auto px-2 sm:px-6 lg:px-0">
       <div className="calculator-card rounded-xl overflow-hidden">
         <div className="section-header px-4 py-5 sm:px-6 sm:py-6 md:px-8">
           <h2 className="text-2xl sm:text-3xl font-bold text-primary-foreground mb-2">

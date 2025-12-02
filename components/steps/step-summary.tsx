@@ -303,7 +303,7 @@ export function StepSummary() {
     ) as Array<keyof typeof breakdown.totalsByCategory>;
 
     return (
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-0 space-y-4 sm:space-y-6">
+      <div className="max-w-4xl mx-auto px-2 sm:px-6 lg:px-0 space-y-4 sm:space-y-6">
         <Card className="elegant-card">
           <CardHeader className="p-4 sm:p-6 md:p-8">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
