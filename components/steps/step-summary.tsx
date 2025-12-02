@@ -303,28 +303,28 @@ export function StepSummary() {
     ) as Array<keyof typeof breakdown.totalsByCategory>;
 
     return (
-      <div className="max-w-4xl mx-auto space-y-6">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-0 space-y-4 sm:space-y-6">
         <Card className="elegant-card">
-          <CardHeader className="p-8">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-2xl text-foreground font-bold">
+          <CardHeader className="p-4 sm:p-6 md:p-8">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <CardTitle className="text-xl sm:text-2xl text-foreground font-bold">
                 Your Estimate
               </CardTitle>
               <Badge
                 variant="secondary"
-                className="bg-accent/20 backdrop-blur-md text-accent border border-accent/40 text-base px-4 py-2"
+                className="bg-accent/20 backdrop-blur-md text-accent border border-accent/40 text-xs sm:text-base px-3 py-1.5 sm:px-4 sm:py-2 self-start sm:self-auto"
               >
                 Verify to unlock full breakdown
               </Badge>
             </div>
-            <p className="text-base text-muted-foreground mt-2">
+            <p className="text-sm sm:text-base text-muted-foreground mt-2">
               Here's your approximate cost for a{" "}
               {(basics.bhk || "2bhk").toUpperCase()} {basics.pkg || "Premium"}{" "}
               package
             </p>
           </CardHeader>
-          <CardContent className="p-8">
-            <div className="space-y-4">
+          <CardContent className="p-4 sm:p-6 md:p-8">
+            <div className="space-y-3 sm:space-y-4">
               {categories.map((cat) => {
                 const total = breakdown.totalsByCategory[cat];
                 const isZero = total === 0;
@@ -338,30 +338,30 @@ export function StepSummary() {
                 return (
                   <div
                     key={String(cat)}
-                    className="flex justify-between items-center py-3 border-b border-white/20 last:border-b-0"
+                    className="flex justify-between items-center py-2 sm:py-3 border-b border-white/20 last:border-b-0"
                   >
-                    <span className="text-foreground font-semibold text-lg">
+                    <span className="text-foreground font-semibold text-sm sm:text-lg">
                       {String(cat)}
                     </span>
-                    <span className="text-foreground font-semibold text-lg">
+                    <span className="text-foreground font-semibold text-sm sm:text-lg">
                       {display}
                     </span>
                   </div>
                 );
               })}
 
-              <div className="flex justify-between items-center py-4 border-t-2 border-white/30 mt-6">
-                <span className="text-2xl font-bold text-foreground">
+              <div className="flex justify-between items-center py-3 sm:py-4 border-t-2 border-white/30 mt-4 sm:mt-6">
+                <span className="text-lg sm:text-2xl font-bold text-foreground">
                   Grand Total
                 </span>
-                <span className="text-2xl font-bold text-primary">
+                <span className="text-lg sm:text-2xl font-bold text-primary">
                   {formatMaskedINR(breakdown.grandTotal)}
                 </span>
               </div>
             </div>
 
             {Object.values(breakdown.totalsByCategory).some((v) => v === 0) && (
-              <p className="text-sm text-muted-foreground mt-6">
+              <p className="text-xs sm:text-sm text-muted-foreground mt-4 sm:mt-6">
                 Categories with no selection show estimated fallback values.
                 Verify to see exact breakdown.
               </p>
@@ -370,23 +370,23 @@ export function StepSummary() {
         </Card>
 
         <Card className="elegant-card">
-          <CardHeader className="p-8">
-            <CardTitle className="text-2xl text-foreground font-bold">
+          <CardHeader className="p-4 sm:p-6 md:p-8">
+            <CardTitle className="text-xl sm:text-2xl text-foreground font-bold">
               {otpSent
                 ? "Enter verification code"
                 : "Verify to unlock full details"}
             </CardTitle>
-            <p className="text-base text-muted-foreground mt-2">
+            <p className="text-sm sm:text-base text-muted-foreground mt-2">
               {otpSent
                 ? "We sent a 6-digit code to your WhatsApp"
                 : "Enter your phone number to receive a verification code"}
             </p>
           </CardHeader>
-          <CardContent className="p-8">
+          <CardContent className="p-4 sm:p-6 md:p-8">
             {!otpSent ? (
-              <div className="space-y-5">
+              <div className="space-y-4 sm:space-y-5">
                 <div>
-                  <label className="block text-base text-foreground font-bold mb-2 pl-4">
+                  <label className="block text-sm sm:text-base text-foreground font-bold mb-2 pl-2 sm:pl-4">
                     Phone number <span className="text-destructive">*</span>
                   </label>
                   <input
@@ -395,26 +395,26 @@ export function StepSummary() {
                     placeholder="9876543210"
                     inputMode="numeric"
                     autoFocus
-                    className="calculator-input w-full h-14 rounded-lg text-lg pl-4"
+                    className="calculator-input w-full h-12 sm:h-14 rounded-lg text-base sm:text-lg pl-3 sm:pl-4"
                     aria-label="Phone number"
                     aria-required="true"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-base text-foreground font-bold mb-2 pl-4">
+                  <label className="block text-sm sm:text-base text-foreground font-bold mb-2 pl-2 sm:pl-4">
                     Name
                   </label>
                   <input
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="Your Name"
-                    className="calculator-input w-full h-14 rounded-lg text-lg pl-4"
+                    className="calculator-input w-full h-12 sm:h-14 rounded-lg text-base sm:text-lg pl-3 sm:pl-4"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-base text-foreground font-bold mb-2 pl-4">
+                  <label className="block text-sm sm:text-base text-foreground font-bold mb-2 pl-2 sm:pl-4">
                     Email (optional)
                   </label>
                   <input
@@ -422,32 +422,32 @@ export function StepSummary() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="you@example.com"
-                    className="calculator-input w-full h-14 rounded-lg text-lg pl-4"
+                    className="calculator-input w-full h-12 sm:h-14 rounded-lg text-base sm:text-lg pl-3 sm:pl-4"
                   />
                 </div>
 
                 <div className="space-y-3">
-                  <label className="flex items-start gap-3">
+                  <label className="flex items-start gap-2 sm:gap-3">
                     <input
                       type="checkbox"
                       checked={consentConnect}
                       onChange={(e) => setConsentConnect(e.target.checked)}
-                      className="mt-1 h-5 w-5 rounded border-border"
+                      className="mt-1 h-4 w-4 sm:h-5 sm:w-5 rounded border-border"
                     />
-                    <span className="text-base text-muted-foreground">
+                    <span className="text-sm sm:text-base text-muted-foreground">
                       I'd like to receive a free plan and be connected with a
                       vetted interior design company.
                     </span>
                   </label>
 
-                  <label className="flex items-start gap-3">
+                  <label className="flex items-start gap-2 sm:gap-3">
                     <input
                       type="checkbox"
                       checked={consentCall}
                       onChange={(e) => setConsentCall(e.target.checked)}
-                      className="mt-1 h-5 w-5 rounded border-border"
+                      className="mt-1 h-4 w-4 sm:h-5 sm:w-5 rounded border-border"
                     />
-                    <span className="text-base text-muted-foreground">
+                    <span className="text-sm sm:text-base text-muted-foreground">
                       It's okay to call me about my project.
                     </span>
                   </label>
@@ -456,31 +456,31 @@ export function StepSummary() {
                 <Button
                   onClick={sendOtp}
                   disabled={otpSending || !phoneValid}
-                  className="btn-enhanced-primary w-full h-14 rounded-lg text-lg font-semibold"
+                  className="btn-enhanced-primary w-full h-12 sm:h-14 rounded-lg text-base sm:text-lg font-semibold"
                 >
                   {otpSending && (
-                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                    <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 mr-2 animate-spin" />
                   )}
                   Send OTP
                 </Button>
               </div>
             ) : (
-              <div className="space-y-5">
-                <div className="flex items-center justify-between">
-                  <span className="text-base text-muted-foreground">
+              <div className="space-y-4 sm:space-y-5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <span className="text-sm sm:text-base text-muted-foreground">
                     Sent to {phone}
                   </span>
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={handleChangeNumber}
-                    className="text-sm text-primary hover:text-primary/80"
+                    className="text-xs sm:text-sm text-primary hover:text-primary/80 self-start sm:self-auto"
                   >
                     Change number
                   </Button>
                 </div>
 
-                <div className="flex flex-col items-center gap-5">
+                <div className="flex flex-col items-center gap-4 sm:gap-5">
                   <OTPInput
                     value={otp}
                     onChange={setOtp}
@@ -492,10 +492,10 @@ export function StepSummary() {
                   <Button
                     onClick={verifyOtp}
                     disabled={otpVerifying || otp.length !== 6}
-                    className="btn-enhanced-primary w-full h-14 rounded-lg text-lg font-semibold"
+                    className="btn-enhanced-primary w-full h-12 sm:h-14 rounded-lg text-base sm:text-lg font-semibold"
                   >
                     {otpVerifying && (
-                      <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                      <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 mr-2 animate-spin" />
                     )}
                     Verify
                   </Button>
@@ -511,7 +511,7 @@ export function StepSummary() {
 
             {otpMsg && (
               <div
-                className="mt-4 text-base text-foreground p-4 bg-white/60 backdrop-blur-md rounded-lg border border-white/40 shadow-sm"
+                className="mt-4 text-sm sm:text-base text-foreground p-3 sm:p-4 bg-white/60 backdrop-blur-md rounded-lg border border-white/40 shadow-sm"
                 role="status"
                 aria-live="polite"
               >
@@ -525,9 +525,9 @@ export function StepSummary() {
           <Button
             variant="ghost"
             onClick={handleStartOver}
-            className="text-muted-foreground hover:text-foreground text-base"
+            className="text-muted-foreground hover:text-foreground text-sm sm:text-base"
           >
-            <RotateCcw className="w-5 h-5 mr-2" />
+            <RotateCcw className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
             Restart
           </Button>
         </div>
@@ -538,13 +538,13 @@ export function StepSummary() {
   if (calculating) {
     return (
       <div
-        className="flex items-center justify-center py-12"
+        className="flex items-center justify-center py-12 px-4"
         role="status"
         aria-live="polite"
       >
         <div className="text-center">
-          <Loader2 className="w-10 h-10 animate-spin text-primary mx-auto mb-4" />
-          <p className="text-muted-foreground text-lg">
+          <Loader2 className="w-8 h-8 sm:w-10 sm:h-10 animate-spin text-primary mx-auto mb-4" />
+          <p className="text-muted-foreground text-base sm:text-lg">
             Calculating your final estimate...
           </p>
         </div>
@@ -558,50 +558,50 @@ export function StepSummary() {
   ) as Array<keyof typeof breakdown.totalsByCategory>;
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <div className="section-header rounded-xl">
-        <div className="flex items-center justify-between">
-          <h2 className="text-3xl font-bold text-primary-foreground">
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-0 space-y-4 sm:space-y-6">
+      <div className="section-header rounded-xl px-4 py-5 sm:px-6 sm:py-6 md:px-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <h2 className="text-2xl sm:text-3xl font-bold text-primary-foreground">
             Cost Estimate Summary
           </h2>
           {usingFallback && (
             <Badge
               variant="secondary"
-              className="bg-primary-foreground/20 backdrop-blur-md text-primary-foreground border border-primary-foreground/40 text-base px-4 py-2"
+              className="bg-primary-foreground/20 backdrop-blur-md text-primary-foreground border border-primary-foreground/40 text-xs sm:text-base px-3 py-1.5 sm:px-4 sm:py-2 self-start sm:self-auto"
             >
               Using offline calculator
             </Badge>
           )}
         </div>
-        <p className="text-primary-foreground/90 mt-3 text-lg">
+        <p className="text-primary-foreground/90 mt-2 sm:mt-3 text-sm sm:text-lg">
           Here's your cost estimate for a {(basics.bhk || "2bhk").toUpperCase()}{" "}
           {basics.pkg || "Premium"} package
         </p>
       </div>
 
       <Card className="elegant-card">
-        <CardHeader className="p-8">
-          <CardTitle className="text-2xl text-foreground font-bold">
+        <CardHeader className="p-4 sm:p-6 md:p-8">
+          <CardTitle className="text-xl sm:text-2xl text-foreground font-bold">
             Project Details
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-base">
+        <CardContent className="p-4 sm:p-6 md:p-8">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 text-sm sm:text-base">
             <div>
               <span className="text-muted-foreground">Carpet Area:</span>
-              <p className="font-bold text-foreground text-lg">
+              <p className="font-bold text-foreground text-base sm:text-lg">
                 {basics.carpetAreaSqft} sq ft
               </p>
             </div>
             <div>
               <span className="text-muted-foreground">Configuration:</span>
-              <p className="font-bold text-foreground text-lg">
+              <p className="font-bold text-foreground text-base sm:text-lg">
                 {(basics.bhk || "2bhk").toUpperCase()}
               </p>
             </div>
             <div>
               <span className="text-muted-foreground">Package:</span>
-              <p className="font-bold text-foreground text-lg">
+              <p className="font-bold text-foreground text-base sm:text-lg">
                 {basics.pkg || "Premium"}
               </p>
             </div>
@@ -610,13 +610,13 @@ export function StepSummary() {
       </Card>
 
       <Card className="elegant-card">
-        <CardHeader className="p-8">
-          <CardTitle className="text-2xl text-foreground font-bold">
+        <CardHeader className="p-4 sm:p-6 md:p-8">
+          <CardTitle className="text-xl sm:text-2xl text-foreground font-bold">
             Cost Breakdown
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-8">
-          <div className="space-y-4">
+        <CardContent className="p-4 sm:p-6 md:p-8">
+          <div className="space-y-3 sm:space-y-4">
             {categories.map((cat) => {
               const total = breakdown.totalsByCategory[cat];
               const display = formatPrice(total);
@@ -624,23 +624,23 @@ export function StepSummary() {
               return (
                 <div
                   key={String(cat)}
-                  className="flex justify-between items-center py-3 border-b border-white/20 last:border-b-0"
+                  className="flex justify-between items-center py-2 sm:py-3 border-b border-white/20 last:border-b-0"
                 >
-                  <span className="text-foreground font-semibold text-lg">
+                  <span className="text-foreground font-semibold text-sm sm:text-lg">
                     {String(cat)}
                   </span>
-                  <span className="text-foreground font-semibold text-lg">
+                  <span className="text-foreground font-semibold text-sm sm:text-lg">
                     {display}
                   </span>
                 </div>
               );
             })}
 
-            <div className="flex justify-between items-center py-4 border-t-2 border-white/30 mt-6">
-              <span className="text-2xl font-bold text-foreground">
+            <div className="flex justify-between items-center py-3 sm:py-4 border-t-2 border-white/30 mt-4 sm:mt-6">
+              <span className="text-lg sm:text-2xl font-bold text-foreground">
                 Grand Total
               </span>
-              <span className="text-2xl font-bold text-primary">
+              <span className="text-lg sm:text-2xl font-bold text-primary">
                 {formatPrice(breakdown.grandTotal)}
               </span>
             </div>
@@ -649,14 +649,14 @@ export function StepSummary() {
       </Card>
 
       {/* Actions */}
-      <div className="flex items-center justify-between gap-4 pt-6">
+      <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4 pt-4 sm:pt-6">
         {/* Left: Back button */}
         <Button
           variant="outline"
           onClick={() => setCurrentStep(4)}
-          className="bg-white/50 backdrop-blur-md border-white/40 text-foreground hover:bg-white/70 h-14 px-8 rounded-lg text-base font-semibold shadow-md"
+          className="bg-white/50 backdrop-blur-md border-white/40 text-foreground hover:bg-white/70 h-12 sm:h-14 px-6 sm:px-8 rounded-lg text-sm sm:text-base font-semibold shadow-md order-2 sm:order-1"
         >
-          <ArrowLeft className="w-5 h-5 mr-2" />
+          <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
           Back
         </Button>
 
@@ -664,18 +664,18 @@ export function StepSummary() {
         <Button
           variant="outline"
           onClick={handleStartOver}
-          className="bg-white/50 backdrop-blur-md border-white/40 text-foreground hover:bg-white/70 h-14 px-8 rounded-lg text-base font-semibold shadow-md"
+          className="bg-white/50 backdrop-blur-md border-white/40 text-foreground hover:bg-white/70 h-12 sm:h-14 px-6 sm:px-8 rounded-lg text-sm sm:text-base font-semibold shadow-md order-3 sm:order-2"
         >
-          <RotateCcw className="w-5 h-5 mr-2" />
+          <RotateCcw className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
           Reset
         </Button>
 
         {/* Right: View PDF button */}
         <Button
           onClick={handleViewPDF}
-          className="btn-enhanced-primary h-14 px-8 rounded-lg text-lg font-semibold"
+          className="btn-enhanced-primary h-12 sm:h-14 px-6 sm:px-8 rounded-lg text-base sm:text-lg font-semibold order-1 sm:order-3"
         >
-          <Eye className="w-5 h-5 mr-2" />
+          <Eye className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
           View PDF
         </Button>
       </div>

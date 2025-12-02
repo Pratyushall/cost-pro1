@@ -19,14 +19,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Badge } from "@/components/ui/badge";
-import {
-  ChevronRight,
-  MoreVertical,
-  X,
-  ArrowLeft,
-  RotateCcw,
-} from "lucide-react";
+import { ChevronRight, MoreVertical, ArrowLeft, RotateCcw } from "lucide-react";
 import { analytics } from "@/lib/analytics";
 import { normalizeAreaInput } from "@/lib/area-utils";
 import {
@@ -255,28 +248,30 @@ export function StepSingleLine() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-0">
       <div className="calculator-card rounded-xl overflow-hidden">
-        <div className="section-header">
-          <h2 className="text-3xl font-bold text-primary-foreground mb-2">
+        <div className="section-header px-4 py-5 sm:px-6 sm:py-6 md:px-8">
+          <h2 className="text-2xl sm:text-3xl font-bold text-primary-foreground mb-2">
             Quick scope
           </h2>
-          <p className="text-primary-foreground/90 text-base leading-relaxed">
+          <p className="text-primary-foreground/90 text-sm sm:text-base leading-relaxed">
             Enable what you need and set coverage, we'll handle the
             calculations.
           </p>
           {isEstimated && totalSqft > 0 && (
-            <div className="mt-3 inline-block bg-primary-foreground/10 border border-primary-foreground/20 px-3 py-1.5 rounded-lg">
-              <span className="text-sm text-primary-foreground font-medium">
+            <div className="mt-2 sm:mt-3 inline-block bg-primary-foreground/10 border border-primary-foreground/20 px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg">
+              <span className="text-xs sm:text-sm text-primary-foreground font-medium">
                 Using ~{totalSqft.toLocaleString()} sq ft (estimated)
               </span>
             </div>
           )}
         </div>
 
-        <div className="section-content">
-          <div className="elegant-card p-6 space-y-4">
-            <Label className="field-label text-base">Room shortcuts</Label>
+        <div className="section-content px-4 py-5 sm:px-6 sm:py-6 md:px-8">
+          <div className="elegant-card p-4 sm:p-6 space-y-3 sm:space-y-4">
+            <Label className="field-label text-sm sm:text-base">
+              Room shortcuts
+            </Label>
             <div className="flex flex-wrap gap-2">
               {(Object.keys(ROOM_SHORTCUTS) as RoomShortcut[]).map(
                 (shortcut) => (
@@ -285,7 +280,7 @@ export function StepSingleLine() {
                     variant="outline"
                     size="sm"
                     onClick={() => handleRoomShortcut(shortcut)}
-                    className={`text-sm transition-colors ${
+                    className={`text-xs sm:text-sm h-8 sm:h-9 transition-colors ${
                       selectedShortcut === shortcut
                         ? "bg-secondary text-secondary-foreground border-secondary"
                         : "border-secondary/30 hover:bg-secondary/10 hover:border-secondary"
@@ -298,10 +293,12 @@ export function StepSingleLine() {
             </div>
           </div>
 
-          <div className="divider" />
+          <div className="divider my-4 sm:my-6" />
 
-          <div className="flex items-center justify-between mb-6">
-            <Label className="field-label text-base">Bulk actions</Label>
+          <div className="flex items-center justify-between mb-4 sm:mb-6">
+            <Label className="field-label text-sm sm:text-base">
+              Bulk actions
+            </Label>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -344,27 +341,30 @@ export function StepSingleLine() {
             </DropdownMenu>
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             {(Object.keys(singleLine) as SingleLineKey[]).map((key) => {
               const item = singleLine[key];
               const isOverridden =
                 item.pkgOverride && item.pkgOverride !== basics.pkg;
 
               return (
-                <div key={key} className="elegant-card p-6 space-y-4">
+                <div
+                  key={key}
+                  className="elegant-card p-4 sm:p-6 space-y-3 sm:space-y-4"
+                >
                   {/* Header - clickable to toggle */}
                   <div
                     className="flex cursor-pointer items-center justify-between"
                     onClick={() => handleToggle(key, !item.enabled)}
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 sm:gap-3">
                       <Switch
                         checked={item.enabled}
                         onCheckedChange={(checked) =>
                           handleToggle(key, checked)
                         }
                       />
-                      <Label className="cursor-pointer text-lg font-semibold text-foreground">
+                      <Label className="cursor-pointer text-base sm:text-lg font-semibold text-foreground">
                         {getItemLabel(key)}
                       </Label>
                     </div>
@@ -372,7 +372,7 @@ export function StepSingleLine() {
 
                   {/* Controls - only show when enabled */}
                   {item.enabled && (
-                    <div className="space-y-4 pl-10 pt-2">
+                    <div className="space-y-3 sm:space-y-4 pl-8 sm:pl-10 pt-2">
                       {/* Scope Presets */}
                       <div className="flex items-center gap-2 flex-wrap">
                         {SCOPE_PRESETS.map((preset) => (
@@ -385,7 +385,7 @@ export function StepSingleLine() {
                             }
                             size="sm"
                             onClick={() => handlePresetClick(key, preset.value)}
-                            className={`text-sm ${
+                            className={`text-xs sm:text-sm h-8 sm:h-9 ${
                               selectedPresets[key] === preset.value
                                 ? "bg-secondary text-secondary-foreground hover:bg-secondary/90"
                                 : "border-secondary/30 hover:bg-secondary/10 hover:border-secondary"
@@ -405,7 +405,7 @@ export function StepSingleLine() {
                           }
                           size="sm"
                           onClick={() => handleAreaModeChange(key, "sqft")}
-                          className={`text-sm ${
+                          className={`text-xs sm:text-sm h-8 sm:h-9 ${
                             item.areaMode === "sqft" ||
                             (item.areaPercent !== 100 &&
                               item.areaPercent !== 80 &&
@@ -419,7 +419,7 @@ export function StepSingleLine() {
                       </div>
 
                       {/* Area Input */}
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                         <div className="flex-1">
                           <Input
                             id={`${key}-area`}
@@ -444,7 +444,7 @@ export function StepSingleLine() {
                             placeholder={
                               item.areaMode === "percent" ? "%" : "sq ft"
                             }
-                            className="calculator-input h-11 rounded-lg"
+                            className="calculator-input h-10 sm:h-11 rounded-lg"
                           />
                         </div>
                         <Select
@@ -453,7 +453,7 @@ export function StepSingleLine() {
                             handleAreaModeChange(key, value)
                           }
                         >
-                          <SelectTrigger className="calculator-select w-28 h-11 rounded-lg">
+                          <SelectTrigger className="calculator-select w-full sm:w-28 h-10 sm:h-11 rounded-lg">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent className="bg-popover border-border text-popover-foreground">
@@ -474,17 +474,17 @@ export function StepSingleLine() {
                       </div>
 
                       {/* Calculated Area Display */}
-                      <p className="field-hint">
+                      <p className="field-hint text-xs sm:text-sm">
                         = {item.areaSqft.toLocaleString()} sq ft
                         {item.areaMode === "percent" &&
                           ` (${item.areaPercent}% of total)`}
                       </p>
 
                       {/* Package Override */}
-                      <div className="flex items-center gap-3">
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
                         <Label
                           htmlFor={`${key}-pkg`}
-                          className="field-label text-sm"
+                          className="field-label text-xs sm:text-sm"
                         >
                           Package:
                         </Label>
@@ -496,7 +496,7 @@ export function StepSingleLine() {
                         >
                           <SelectTrigger
                             id={`${key}-pkg`}
-                            className="calculator-select w-40 h-11 rounded-lg"
+                            className="calculator-select w-full sm:w-40 h-10 sm:h-11 rounded-lg"
                           >
                             <SelectValue placeholder="Select" />
                           </SelectTrigger>
@@ -516,7 +516,7 @@ export function StepSingleLine() {
                           </SelectContent>
                         </Select>
                         {!item.pkgOverride && basics.pkg && (
-                          <span className="text-sm text-muted-foreground"></span>
+                          <span className="text-xs sm:text-sm text-muted-foreground"></span>
                         )}
                       </div>
                     </div>
@@ -526,14 +526,14 @@ export function StepSingleLine() {
             })}
           </div>
 
-          <div className="flex items-center justify-between pt-6 gap-4">
+          <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between pt-4 sm:pt-6 gap-3 sm:gap-4">
             {/* Left: Back button */}
             <Button
               variant="outline"
               onClick={handleBack}
-              className="bg-white/50 backdrop-blur-md border-white/40 text-foreground hover:bg-white/70 h-14 px-8 rounded-lg text-base font-semibold shadow-md"
+              className="bg-white/50 backdrop-blur-md border-white/40 text-foreground hover:bg-white/70 h-12 sm:h-14 px-6 sm:px-8 rounded-lg text-sm sm:text-base font-semibold shadow-md order-2 sm:order-1"
             >
-              <ArrowLeft className="w-5 h-5 mr-2" />
+              <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
               Back
             </Button>
 
@@ -541,19 +541,19 @@ export function StepSingleLine() {
             <Button
               variant="outline"
               onClick={handleReset}
-              className="bg-white/50 backdrop-blur-md border-white/40 text-foreground hover:bg-white/70 h-14 px-8 rounded-lg text-base font-semibold shadow-md"
+              className="bg-white/50 backdrop-blur-md border-white/40 text-foreground hover:bg-white/70 h-12 sm:h-14 px-6 sm:px-8 rounded-lg text-sm sm:text-base font-semibold shadow-md order-3 sm:order-2"
             >
-              <RotateCcw className="w-5 h-5 mr-2" />
+              <RotateCcw className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
               Reset
             </Button>
 
             {/* Right: Next button */}
             <Button
               onClick={handleNext}
-              className="btn-enhanced-primary px-10 h-12 rounded-lg text-base font-semibold"
+              className="btn-enhanced-primary px-6 sm:px-10 h-12 rounded-lg text-sm sm:text-base font-semibold order-1 sm:order-3"
             >
               Next
-              <ChevronRight className="h-5 w-5 ml-2" />
+              <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 ml-2" />
             </Button>
           </div>
         </div>

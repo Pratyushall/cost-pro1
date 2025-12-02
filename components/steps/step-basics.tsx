@@ -2,7 +2,6 @@
 
 import type React from "react";
 import { resetStore } from "@/store/reset";
-
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useEstimatorStore } from "@/store/estimator";
 import { Button } from "@/components/ui/button";
@@ -23,7 +22,6 @@ import {
   APPROXIMATE_RANGES,
   BHK_OPTIONS,
 } from "@/lib/area-utils";
-import { RotateCcw } from "lucide-react";
 
 const STORAGE_KEY = "estimator_basics_v1";
 
@@ -72,7 +70,6 @@ export function StepBasics() {
     const timer = setTimeout(() => {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(basics));
     }, 300);
-
     return () => clearTimeout(timer);
   }, [basics]);
 
@@ -114,7 +111,6 @@ export function StepBasics() {
       setAreaInput(""); // Clear manual input
 
       const range = APPROXIMATE_RANGES.find((r) => r.value === value);
-
       if (!range) return;
 
       if (value === "not-sure" || value === "no-idea") {
@@ -246,24 +242,27 @@ export function StepBasics() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-0">
       <div className="calculator-card rounded-xl overflow-hidden">
         {/* Header Section with Primary Color */}
-        <div className="section-header">
-          <h2 className="text-4xl font-bold text-primary-foreground mb-3">
+        <div className="section-header px-4 py-6 sm:px-6 sm:py-8 md:px-8">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-primary-foreground mb-2 sm:mb-3">
             Let&apos;s Begin!
           </h2>
-          <p className="text-primary-foreground/90 text-lg leading-relaxed">
+          <p className="text-primary-foreground/90 text-base sm:text-lg leading-relaxed">
             Choose a couple of basics and we&apos;ll take care of the math.
           </p>
         </div>
 
         {/* Content Section */}
-        <div className="section-content">
+        <div className="section-content px-4 py-6 sm:px-6 sm:py-8 md:px-8">
           {/* Carpet Area Section */}
-          <div className="elegant-card p-8 space-y-5">
+          <div className="elegant-card p-4 sm:p-6 md:p-8 space-y-4 sm:space-y-5">
             <div className="flex items-center justify-between">
-              <Label htmlFor="carpet-area" className="field-label text-xl">
+              <Label
+                htmlFor="carpet-area"
+                className="field-label text-lg sm:text-xl"
+              >
                 Carpet Area
               </Label>
             </div>
@@ -276,24 +275,24 @@ export function StepBasics() {
               value={areaInput}
               onChange={(e) => handleAreaInputChange(e.target.value)}
               onKeyDown={handleKeyDown}
-              className="calculator-input h-14 text-lg rounded-lg"
+              className="calculator-input h-12 sm:h-14 text-base sm:text-lg rounded-lg"
             />
 
-            <p className="field-hint text-base">
+            <p className="field-hint text-sm sm:text-base">
               Not sure now? Pick an approximate below or we&apos;ll guess—you
               can edit later.
             </p>
 
             {/* Approximate Range Selector */}
-            <div className="pt-2 space-y-4">
-              <Label className="field-label text-base">
+            <div className="pt-2 space-y-3 sm:space-y-4">
+              <Label className="field-label text-sm sm:text-base">
                 Or choose approximate range:
               </Label>
               <Select
                 value={approximateRange}
                 onValueChange={handleApproximateChange}
               >
-                <SelectTrigger className="calculator-select h-14 rounded-lg text-lg">
+                <SelectTrigger className="calculator-select h-12 sm:h-14 rounded-lg text-base sm:text-lg">
                   <SelectValue placeholder="Select approximate range" />
                 </SelectTrigger>
                 <SelectContent className="bg-popover border-border max-h-[300px] text-popover-foreground">
@@ -301,7 +300,7 @@ export function StepBasics() {
                     <SelectItem
                       key={range.value}
                       value={range.value}
-                      className="py-4 text-lg focus:bg-accent/10 focus:text-foreground text-popover-foreground"
+                      className="py-3 sm:py-4 text-base sm:text-lg focus:bg-accent/10 focus:text-foreground text-popover-foreground"
                     >
                       {range.label}
                     </SelectItem>
@@ -313,7 +312,7 @@ export function StepBasics() {
             {/* Estimate Message */}
             {showEstimateHint && estimateMessage && (
               <div
-                className="bg-accent/10 border border-accent/30 text-accent px-5 py-4 rounded-lg text-base font-medium backdrop-blur-sm"
+                className="bg-accent/10 border border-accent/30 text-accent px-4 py-3 sm:px-5 sm:py-4 rounded-lg text-sm sm:text-base font-medium backdrop-blur-sm"
                 role="status"
                 aria-live="polite"
               >
@@ -322,16 +321,16 @@ export function StepBasics() {
             )}
           </div>
 
-          <div className="divider" />
+          <div className="divider my-4 sm:my-6" />
 
           {/* BHK and Package Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
             {/* BHK Configuration */}
-            <div className="elegant-card p-8 space-y-5">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-lg bg-secondary/90 backdrop-blur-sm flex items-center justify-center shadow-lg">
+            <div className="elegant-card p-4 sm:p-6 md:p-8 space-y-4 sm:space-y-5">
+              <div className="flex items-center gap-3 sm:gap-4">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-secondary/90 backdrop-blur-sm flex items-center justify-center shadow-lg">
                   <svg
-                    className="w-6 h-6 text-secondary-foreground"
+                    className="w-5 h-5 sm:w-6 sm:h-6 text-secondary-foreground"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -344,11 +343,13 @@ export function StepBasics() {
                     />
                   </svg>
                 </div>
-                <Label className="field-label text-lg">BHK Configuration</Label>
+                <Label className="field-label text-base sm:text-lg">
+                  BHK Configuration
+                </Label>
               </div>
 
               <Select value={basics.bhk} onValueChange={handleBhkChange}>
-                <SelectTrigger className="calculator-select h-14 rounded-lg text-lg">
+                <SelectTrigger className="calculator-select h-12 sm:h-14 rounded-lg text-base sm:text-lg">
                   <SelectValue placeholder="Select BHK" />
                 </SelectTrigger>
                 <SelectContent className="bg-popover border-border text-popover-foreground">
@@ -356,7 +357,7 @@ export function StepBasics() {
                     <SelectItem
                       key={option.value}
                       value={option.value}
-                      className="py-4 text-lg focus:bg-secondary/10 focus:text-foreground text-popover-foreground"
+                      className="py-3 sm:py-4 text-base sm:text-lg focus:bg-secondary/10 focus:text-foreground text-popover-foreground"
                     >
                       {option.label}
                     </SelectItem>
@@ -366,11 +367,11 @@ export function StepBasics() {
             </div>
 
             {/* Package Type */}
-            <div className="elegant-card p-8 space-y-5">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-lg bg-accent/90 backdrop-blur-sm flex items-center justify-center shadow-lg">
+            <div className="elegant-card p-4 sm:p-6 md:p-8 space-y-4 sm:space-y-5">
+              <div className="flex items-center gap-3 sm:gap-4">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-accent/90 backdrop-blur-sm flex items-center justify-center shadow-lg">
                   <svg
-                    className="w-6 h-6 text-accent-foreground"
+                    className="w-5 h-5 sm:w-6 sm:h-6 text-accent-foreground"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -383,30 +384,32 @@ export function StepBasics() {
                     />
                   </svg>
                 </div>
-                <Label className="field-label text-lg">Package Type</Label>
+                <Label className="field-label text-base sm:text-lg">
+                  Package Type
+                </Label>
               </div>
 
               <Select value={basics.pkg} onValueChange={handlePackageChange}>
-                <SelectTrigger className="calculator-select h-14 rounded-lg text-lg">
+                <SelectTrigger className="calculator-select h-12 sm:h-14 rounded-lg text-base sm:text-lg">
                   <SelectValue placeholder="Select package" />
                 </SelectTrigger>
                 <SelectContent className="bg-popover border-border text-popover-foreground">
                   <SelectItem
                     value="Premium"
-                    className="py-4 text-lg focus:bg-accent/10 focus:text-foreground text-popover-foreground"
+                    className="py-3 sm:py-4 text-base sm:text-lg focus:bg-accent/10 focus:text-foreground text-popover-foreground"
                   >
                     Premium
                   </SelectItem>
                   <SelectItem
                     value="Luxury"
-                    className="py-4 text-lg focus:bg-accent/10 focus:text-foreground text-popover-foreground"
+                    className="py-3 sm:py-4 text-base sm:text-lg focus:bg-accent/10 focus:text-foreground text-popover-foreground"
                   >
                     Luxury
                   </SelectItem>
                 </SelectContent>
               </Select>
 
-              <p className="field-hint text-base">
+              <p className="field-hint text-sm sm:text-base">
                 {basics.pkg === "Premium"
                   ? "Good quality materials and finishes"
                   : basics.pkg === "Luxury"
@@ -416,18 +419,18 @@ export function StepBasics() {
             </div>
           </div>
 
-          <div className="flex items-center justify-between pt-6 gap-4">
-            {/* Left: Back button - hidden on step 1 */}
-            <div className="w-32"></div>
+          <div className="flex flex-col-reverse sm:flex-row items-center justify-between pt-4 sm:pt-6 gap-3 sm:gap-4">
+            {/* Left: Back button placeholder - hidden on step 1 */}
+            <div className="hidden sm:block w-32"></div>
 
-            {/* Right: Next button */}
+            {/* Right: Next button - full width on mobile */}
             <Button
               onClick={handleNext}
-              className="btn-enhanced-primary px-12 h-14 rounded-lg text-lg font-semibold"
+              className="btn-enhanced-primary w-full sm:w-auto px-8 sm:px-12 h-12 sm:h-14 rounded-lg text-base sm:text-lg font-semibold"
             >
               Continue
               <svg
-                className="w-6 h-6 ml-2"
+                className="w-5 h-5 sm:w-6 sm:h-6 ml-2"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
