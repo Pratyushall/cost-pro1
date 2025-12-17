@@ -5,12 +5,12 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-/* ---------------- env ---------------- */
+/* ---------------- env (NO DEFAULTS) ---------------- */
 const {
-  AISENSY_API_URL = "https://backend.aisensy.com/campaign/t1/api/v2",
-  AISENSY_API_KEY = "",
-  AISENSY_TEMPLATE_NAME = "otp_message_new",
-  AISENSY_CAMPAIGN_NAME = "otp_message_new",
+  AISENSY_API_URL,
+  AISENSY_API_KEY,
+  AISENSY_TEMPLATE_NAME,
+  AISENSY_CAMPAIGN_NAME,
   AISENSY_SOURCE = "Calculator",
   OTP_DIGITS = "6",
   OTP_TTL_MINUTES = "5",
@@ -40,6 +40,22 @@ export async function POST(req: Request) {
   try {
     console.log("🔥 OTP REQUEST HIT");
 
+    if (
+      !AISENSY_API_URL ||
+      !AISENSY_API_KEY ||
+      !AISENSY_TEMPLATE_NAME ||
+      !AISENSY_CAMPAIGN_NAME
+    ) {
+      console.error("❌ ENV MISSING", {
+        AISENSY_API_URL,
+        AISENSY_API_KEY: !!AISENSY_API_KEY,
+        AISENSY_TEMPLATE_NAME,
+        AISENSY_CAMPAIGN_NAME,
+      });
+
+      return json({ ok: false, error: "env_missing" }, 500);
+    }
+
     const body = await req.json().catch(() => ({}));
     const phoneRaw = String(body?.phone ?? "");
     const destination = toE164India(phoneRaw);
@@ -47,24 +63,6 @@ export async function POST(req: Request) {
     if (!/^\+\d{10,15}$/.test(destination)) {
       return json({ ok: false, error: "bad_phone" }, 400);
     }
-
-    /* ---- env sanity ---- */
-    const missing: string[] = [];
-    if (!AISENSY_API_URL) missing.push("AISENSY_API_URL");
-    if (!AISENSY_API_KEY) missing.push("AISENSY_API_KEY");
-    if (!AISENSY_TEMPLATE_NAME) missing.push("AISENSY_TEMPLATE_NAME");
-
-    if (missing.length && NEXT_PUBLIC_OTP_DUMMY !== "true") {
-      console.error("❌ ENV MISSING", missing);
-      return json({ ok: false, error: "misconfigured", missing }, 500);
-    }
-
-    console.log("ENV CHECK", {
-      hasKey: !!AISENSY_API_KEY,
-      template: AISENSY_TEMPLATE_NAME,
-      campaign: AISENSY_CAMPAIGN_NAME,
-      dummy: NEXT_PUBLIC_OTP_DUMMY,
-    });
 
     /* ---- resend cooldown ---- */
     const now = Date.now();
@@ -76,69 +74,42 @@ export async function POST(req: Request) {
     }
 
     /* ---- generate + store OTP ---- */
-    const len = parseInt(OTP_DIGITS, 10) || 6;
-    const ttlMin = parseInt(OTP_TTL_MINUTES, 10) || 5;
-
-    const code = genOtp(len);
+    const code = genOtp(parseInt(OTP_DIGITS, 10));
     await storeOtp(destination, code);
 
-    /* ---- dummy mode ---- */
     if (NEXT_PUBLIC_OTP_DUMMY === "true") {
-      cooldown.set(destination, { nextSendAt: now + cooldownMs });
-      return json({
-        ok: true,
-        dev: true,
-        code,
-        expiresInSec: ttlMin * 60,
-      });
+      return json({ ok: true, dev: true, code });
     }
 
-    /* ---- AiSensy payload (THIS IS CRITICAL) ---- */
+    /* ---- payload ---- */
     const payload = {
-      apiKey: AISENSY_API_KEY, // ✅ MUST be in body
+      apiKey: AISENSY_API_KEY,
       campaignName: AISENSY_CAMPAIGN_NAME,
       destination,
       userName: "Guest",
       source: AISENSY_SOURCE,
       templateName: AISENSY_TEMPLATE_NAME,
-      templateParams: [code], // ✅ ARRAY PARAM {{1}}
+      templateParams: [code],
     };
 
-    /* ---- send helper ---- */
-    const send = async (dest: string) => {
-      const res = await fetch(AISENSY_API_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json", // ❌ NO Authorization header
-        },
-        body: JSON.stringify({
-          ...payload,
-          destination: dest,
-        }),
-      });
+    console.log("AISENSY PAYLOAD DEBUG", {
+      campaignName: AISENSY_CAMPAIGN_NAME,
+      templateName: AISENSY_TEMPLATE_NAME,
+    });
 
-      const text = await res.text();
-      let parsed: any = null;
-      try {
-        parsed = JSON.parse(text);
-      } catch {}
+    const res = await fetch(AISENSY_API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
 
-      console.log("AISENSY RESPONSE", {
-        status: res.status,
-        body: text,
-      });
+    const text = await res.text();
+    let parsed: any = null;
+    try {
+      parsed = JSON.parse(text);
+    } catch {}
 
-      return { res, parsed };
-    };
-
-    /* ---- primary send ---- */
-    let { res, parsed } = await send(destination);
-
-    /* ---- retry without + (AiSensy quirk) ---- */
-    if (!res.ok) {
-      const digitsOnly = destination.replace(/^\+/, "");
-      ({ res, parsed } = await send(digitsOnly));
-    }
+    console.log("AISENSY RESPONSE", res.status, text);
 
     if (!res.ok) {
       return json(
@@ -152,16 +123,11 @@ export async function POST(req: Request) {
       );
     }
 
-    /* ---- success ---- */
     cooldown.set(destination, { nextSendAt: now + cooldownMs });
 
-    return json({
-      ok: true,
-      expiresInSec: ttlMin * 60,
-      provider: parsed,
-    });
+    return json({ ok: true });
   } catch (e: any) {
     console.error("OTP SERVER ERROR", e);
-    return json({ ok: false, error: "server_error", detail: e?.message }, 500);
+    return json({ ok: false, error: "server_error", detail: e.message }, 500);
   }
 }
