@@ -5,9 +5,10 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+/* ---------------- env ---------------- */
 const {
   AISENSY_API_URL = "https://backend.aisensy.com/campaign/t1/api/v2",
-  AISENSY_API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY4ZThlODU3ODI2ODQwMGQ0ZmFhZDVmMCIsIm5hbWUiOiJTaW1wbGlmeSBIb21lIiwiYXBwTmFtZSI6IkFpU2Vuc3kiLCJjbGllbnRJZCI6IjY4ZThlODU3ODI2ODQwMGQ0ZmFhZDVlNSIsImFjdGl2ZVBsYW4iOiJGUkVFX0ZPUkVWRVIiLCJpYXQiOjE3NjIxNjk1OTl9.jDEsWvFocCquBCUBYvTKAQWJue0LJsdevXmndxh0JCI",
+  AISENSY_API_KEY = "",
   AISENSY_TEMPLATE_NAME = "otp_message_new",
   AISENSY_CAMPAIGN_NAME = "otp_message_new",
   AISENSY_SOURCE = "Calculator",
@@ -54,7 +55,7 @@ export async function POST(req: Request) {
     if (!AISENSY_TEMPLATE_NAME) missing.push("AISENSY_TEMPLATE_NAME");
 
     if (missing.length && NEXT_PUBLIC_OTP_DUMMY !== "true") {
-      console.log("❌ ENV MISSING", missing);
+      console.error("❌ ENV MISSING", missing);
       return json({ ok: false, error: "misconfigured", missing }, 500);
     }
 
@@ -92,15 +93,15 @@ export async function POST(req: Request) {
       });
     }
 
-    /* ---- AiSensy payload (ARRAY PARAMS) ---- */
+    /* ---- AiSensy payload (THIS IS CRITICAL) ---- */
     const payload = {
+      apiKey: AISENSY_API_KEY, // ✅ MUST be in body
       campaignName: AISENSY_CAMPAIGN_NAME,
       destination,
       userName: "Guest",
       source: AISENSY_SOURCE,
       templateName: AISENSY_TEMPLATE_NAME,
-      templateParams: [code], // ✅ REQUIRED ({{1}})
-      tags: ["otp"],
+      templateParams: [code], // ✅ ARRAY PARAM {{1}}
     };
 
     /* ---- send helper ---- */
@@ -108,8 +109,7 @@ export async function POST(req: Request) {
       const res = await fetch(AISENSY_API_URL, {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${AISENSY_API_KEY}`, // ✅ REQUIRED ON VERCEL
+          "Content-Type": "application/json", // ❌ NO Authorization header
         },
         body: JSON.stringify({
           ...payload,
@@ -128,13 +128,13 @@ export async function POST(req: Request) {
         body: text,
       });
 
-      return { res, text, parsed };
+      return { res, parsed };
     };
 
     /* ---- primary send ---- */
     let { res, parsed } = await send(destination);
 
-    /* ---- retry without + if needed ---- */
+    /* ---- retry without + (AiSensy quirk) ---- */
     if (!res.ok) {
       const digitsOnly = destination.replace(/^\+/, "");
       ({ res, parsed } = await send(digitsOnly));
