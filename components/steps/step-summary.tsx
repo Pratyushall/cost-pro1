@@ -392,7 +392,7 @@ export function StepSummary() {
                   <input
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    placeholder="9876543210"
+                    placeholder="+919876543210"
                     inputMode="numeric"
                     autoFocus
                     className="calculator-input w-full h-12 sm:h-14 rounded-lg text-base sm:text-lg pl-3 sm:pl-4"

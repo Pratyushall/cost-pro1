@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import crypto from "crypto";
 import { genOtp, storeOtp } from "@/lib/otp";
 
 export const runtime = "nodejs";
@@ -7,23 +6,24 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 const {
-  AISENSY_API_URL = "",
-  AISENSY_API_KEY = "",
-  AISENSY_TEMPLATE_NAME = "",
-  AISENSY_CAMPAIGN_NAME = "OTP",
-  AISENSY_SOURCE = "website",
+  AISENSY_API_URL = "https://backend.aisensy.com/campaign/t1/api/v2",
+  AISENSY_API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY4ZThlODU3ODI2ODQwMGQ0ZmFhZDVmMCIsIm5hbWUiOiJTaW1wbGlmeSBIb21lIiwiYXBwTmFtZSI6IkFpU2Vuc3kiLCJjbGllbnRJZCI6IjY4ZThlODU3ODI2ODQwMGQ0ZmFhZDVlNSIsImFjdGl2ZVBsYW4iOiJGUkVFX0ZPUkVWRVIiLCJpYXQiOjE3NjIxNjk1OTl9.jDEsWvFocCquBCUBYvTKAQWJue0LJsdevXmndxh0JCI",
+  AISENSY_TEMPLATE_NAME = "otp_message_new",
+  AISENSY_CAMPAIGN_NAME = "otp_message_new",
+  AISENSY_SOURCE = "Calculator",
   OTP_DIGITS = "6",
   OTP_TTL_MINUTES = "5",
   OTP_RESEND_COOLDOWN_SECONDS = "45",
   NEXT_PUBLIC_OTP_DUMMY = "false",
 } = process.env;
 
-// --- resend cooldown (in-memory; use Redis for multi-instance) ---
+/* ---------------- cooldown (in-memory) ---------------- */
 type CoolRec = { nextSendAt: number };
 const cooldown: Map<string, CoolRec> =
   (global as any).__otpCooldown ?? new Map();
 (global as any).__otpCooldown = cooldown;
 
+/* ---------------- utils ---------------- */
 const toE164India = (raw: string) => {
   const d = (raw || "").replace(/\D/g, "");
   if (!d) return "";
@@ -31,108 +31,137 @@ const toE164India = (raw: string) => {
   if (d.startsWith("91") && d.length > 10) return `+${d}`;
   return d.startsWith("+") ? d : `+${d}`;
 };
+
 const json = (res: any, status = 200) => NextResponse.json(res, { status });
 
+/* ---------------- handler ---------------- */
 export async function POST(req: Request) {
   try {
+    console.log("🔥 OTP REQUEST HIT");
+
     const body = await req.json().catch(() => ({}));
     const phoneRaw = String(body?.phone ?? "");
-    const destination = toE164India(phoneRaw); // store/send using E.164 with +
+    const destination = toE164India(phoneRaw);
 
     if (!/^\+\d{10,15}$/.test(destination)) {
-      return json({ ok: false, error: "bad_phone", detail: destination }, 400);
+      return json({ ok: false, error: "bad_phone" }, 400);
     }
 
-    // env sanity for provider
-    const miss: string[] = [];
-    if (!AISENSY_API_URL) miss.push("AISENSY_API_URL");
-    if (!AISENSY_API_KEY) miss.push("AISENSY_API_KEY");
-    if (!AISENSY_TEMPLATE_NAME) miss.push("AISENSY_TEMPLATE_NAME");
-    if (miss.length && NEXT_PUBLIC_OTP_DUMMY !== "true") {
-      return json({ ok: false, error: "misconfigured", missing: miss }, 500);
+    /* ---- env sanity ---- */
+    const missing: string[] = [];
+    if (!AISENSY_API_URL) missing.push("AISENSY_API_URL");
+    if (!AISENSY_API_KEY) missing.push("AISENSY_API_KEY");
+    if (!AISENSY_TEMPLATE_NAME) missing.push("AISENSY_TEMPLATE_NAME");
+
+    if (missing.length && NEXT_PUBLIC_OTP_DUMMY !== "true") {
+      console.log("❌ ENV MISSING", missing);
+      return json({ ok: false, error: "misconfigured", missing }, 500);
     }
 
-    // resend cooldown
+    console.log("ENV CHECK", {
+      hasKey: !!AISENSY_API_KEY,
+      template: AISENSY_TEMPLATE_NAME,
+      campaign: AISENSY_CAMPAIGN_NAME,
+      dummy: NEXT_PUBLIC_OTP_DUMMY,
+    });
+
+    /* ---- resend cooldown ---- */
     const now = Date.now();
     const cooldownMs = parseInt(OTP_RESEND_COOLDOWN_SECONDS, 10) * 1000;
+
     const prev = cooldown.get(destination);
     if (prev && now < prev.nextSendAt) {
       return json({ ok: false, error: "resend_too_soon" }, 429);
     }
 
-    // generate & persist OTP (KV or in-memory via lib/otp)
+    /* ---- generate + store OTP ---- */
     const len = parseInt(OTP_DIGITS, 10) || 6;
     const ttlMin = parseInt(OTP_TTL_MINUTES, 10) || 5;
+
     const code = genOtp(len);
     await storeOtp(destination, code);
 
-    // dev bypass (don’t hit provider)
+    /* ---- dummy mode ---- */
     if (NEXT_PUBLIC_OTP_DUMMY === "true") {
       cooldown.set(destination, { nextSendAt: now + cooldownMs });
-      return json({ ok: true, dev: true, code, expiresInSec: ttlMin * 60 });
+      return json({
+        ok: true,
+        dev: true,
+        code,
+        expiresInSec: ttlMin * 60,
+      });
     }
 
-    // --- AiSensy Campaign v2 payload ---
+    /* ---- AiSensy payload (ARRAY PARAMS) ---- */
     const payload = {
-      apiKey: AISENSY_API_KEY,
       campaignName: AISENSY_CAMPAIGN_NAME,
       destination,
       userName: "Guest",
       source: AISENSY_SOURCE,
       templateName: AISENSY_TEMPLATE_NAME,
-      templateParams: {
-        otp: code,
-      },
+      templateParams: [code], // ✅ REQUIRED ({{1}})
       tags: ["otp"],
     };
 
-    // try with '+', optionally retry digits-only if tenant complains
+    /* ---- send helper ---- */
     const send = async (dest: string) => {
-      const r = await fetch(AISENSY_API_URL, {
+      const res = await fetch(AISENSY_API_URL, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...payload, destination: dest }),
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${AISENSY_API_KEY}`, // ✅ REQUIRED ON VERCEL
+        },
+        body: JSON.stringify({
+          ...payload,
+          destination: dest,
+        }),
       });
-      const txt = await r.text();
+
+      const text = await res.text();
       let parsed: any = null;
       try {
-        parsed = JSON.parse(txt);
-      } catch {
-        /* ignore */
-      }
-      return { r, txt, parsed };
+        parsed = JSON.parse(text);
+      } catch {}
+
+      console.log("AISENSY RESPONSE", {
+        status: res.status,
+        body: text,
+      });
+
+      return { res, text, parsed };
     };
 
-    let { r, txt, parsed } = await send(destination);
-    if (!r.ok && /invalid|phone|destination|number/i.test(txt)) {
+    /* ---- primary send ---- */
+    let { res, parsed } = await send(destination);
+
+    /* ---- retry without + if needed ---- */
+    if (!res.ok) {
       const digitsOnly = destination.replace(/^\+/, "");
-      ({ r, txt, parsed } = await send(digitsOnly));
+      ({ res, parsed } = await send(digitsOnly));
     }
 
-    if (!r.ok) {
-      // don’t block user from retrying → no cooldown set on provider failure
+    if (!res.ok) {
       return json(
         {
           ok: false,
           error: "aisensy_failed",
-          status: r.status,
-          detail: parsed || txt,
+          status: res.status,
+          detail: parsed,
         },
         502
       );
     }
 
-    // success → set cooldown and return
+    /* ---- success ---- */
     cooldown.set(destination, { nextSendAt: now + cooldownMs });
+
     return json({
       ok: true,
       expiresInSec: ttlMin * 60,
-      provider: parsed || txt,
+      provider: parsed,
     });
   } catch (e: any) {
-    return json(
-      { ok: false, error: "server_error", detail: String(e?.message || e) },
-      500
-    );
+    console.error("OTP SERVER ERROR", e);
+    return json({ ok: false, error: "server_error", detail: e?.message }, 500);
   }
 }
