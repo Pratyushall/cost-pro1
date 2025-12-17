@@ -76,13 +76,14 @@ export async function POST(req: Request) {
     const payload = {
       apiKey: AISENSY_API_KEY,
       campaignName: AISENSY_CAMPAIGN_NAME,
-      destination, // E.164 with '+'
+      destination,
       userName: "Guest",
       source: AISENSY_SOURCE,
-      templateParams: [code], // {{1}} -> OTP in your template
-      tags: ["otp"],
-      attributes: { ttl_minutes: String(ttlMin) },
       templateName: AISENSY_TEMPLATE_NAME,
+      templateParams: {
+        otp: code,
+      },
+      tags: ["otp"],
     };
 
     // try with '+', optionally retry digits-only if tenant complains

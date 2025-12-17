@@ -23,9 +23,8 @@ const nowSec = () => Math.floor(Date.now() / 1000);
 const key = (id: string) => `otp:${sha256(id.toLowerCase())}`;
 
 export function genOtp(len = 6) {
-  return Array.from({ length: len }, () => Math.floor(Math.random() * 10)).join(
-    ""
-  );
+  const max = 10 ** len;
+  return crypto.randomInt(0, max).toString().padStart(len, "0");
 }
 
 export async function storeOtp(identity: string, otp: string) {
